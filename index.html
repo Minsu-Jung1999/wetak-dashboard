@@ -48,6 +48,13 @@
   .expand-opt{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;cursor:pointer;color:var(--ink)}
   .expand-opt input{accent-color:var(--signal);width:15px;height:15px}
 
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px}
+  .tab.on{background:var(--ink);color:var(--hi);border-color:var(--ink)}
+  .selrow{display:flex;gap:10px;flex-wrap:wrap}
+  .selrow select{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px}
+  .selrow select:focus{outline:2px solid var(--signal);outline-offset:1px}
+
   .weights{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}
   @media(max-width:640px){.weights{grid-template-columns:repeat(2,1fr)}}
   .wgt label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:6px;font-weight:700}
@@ -167,17 +174,36 @@
   </header>
 
   <div class="panel">
-    <div class="panel-h">① 후보 키워드 입력</div>
-    <textarea id="kwInput" placeholder="한 줄에 하나씩 입력하세요.
+    <div class="panel-h">① 후보 키워드</div>
+    <div class="tabs">
+      <button class="tab on" id="tabAuto" type="button">자동 발굴</button>
+      <button class="tab" id="tabManual" type="button">직접 입력</button>
+    </div>
+
+    <div id="autoPane">
+      <div class="selrow">
+        <select id="catSel"></select>
+        <select id="cntSel">
+          <option value="20">후보 20개</option>
+          <option value="30" selected>후보 30개</option>
+          <option value="50">후보 50개</option>
+        </select>
+      </div>
+      <div class="hint">카테고리만 고르면 네이버 연관 키워드 수백 개를 스캔해 <b>"수요 있음 + 경쟁 높음 제외"</b> 후보를 자동 선별하고, 상위 후보는 트렌드까지 계산합니다.</div>
+    </div>
+
+    <div id="manualPane" style="display:none">
+      <textarea id="kwInput" placeholder="한 줄에 하나씩 입력하세요.
 공급가·판매가를 함께 넣으면 마진까지 계산합니다 (쉼표 구분).
 
 예)
 무선 안마기
 캠핑 폴딩박스, 8500, 19900
 강아지 자동급식기, 22000, 45000"></textarea>
-    <div class="hint">형식: <code>키워드</code> 또는 <code>키워드, 공급가, 판매가</code> — 가격을 넣으면 마진 점수가 반영됩니다.</div>
-    <label class="expand-opt"><input type="checkbox" id="expand"> 연관 키워드 자동 확장 — 네이버 연관검색어를 키워드당 최대 20개까지 함께 스코어링</label>
-    <label class="expand-opt"><input type="checkbox" id="supplyChk"> 공급처 매칭 (도매매) — 위탁 가능 여부·최저 공급가 조회, 판매가만 입력 시 마진 자동 계산</label>
+      <div class="hint">형식: <code>키워드</code> 또는 <code>키워드, 공급가, 판매가</code> — 가격을 넣으면 마진 점수가 반영됩니다.</div>
+      <label class="expand-opt"><input type="checkbox" id="expand"> 연관 키워드 자동 확장 — 네이버 연관검색어를 키워드당 최대 20개까지 함께 스코어링</label>
+      <label class="expand-opt"><input type="checkbox" id="supplyChk"> 공급처 매칭 (도매매) — 위탁 가능 여부·최저 공급가 조회, 판매가만 입력 시 마진 자동 계산</label>
+    </div>
 
     <div class="panel-h" style="margin-top:24px">② 가중치 조정</div>
     <div class="weights">
@@ -188,7 +214,7 @@
     </div>
     <div class="wsum" id="wsum">합계 100%</div>
 
-    <button class="run" id="runBtn"><span class="dot"></span> 스코어링 실행</button>
+    <button class="run" id="runBtn"><span class="dot"></span> 자동 발굴 실행</button>
   </div>
 
   <div class="results">
@@ -278,9 +304,30 @@ function parseInput(){
   });
 }
 
-// 스코어링 호출: 401이면 (비밀번호가 서버에서 바뀐 경우) 로그인 화면으로 복귀
-async function callScore(payload){
-  const res = await fetch(API+'/api/score',{
+// ---- 모드 탭 (자동 발굴 / 직접 입력) ----
+let autoMode=true;
+function setMode(auto){
+  autoMode=auto;
+  $('#tabAuto').classList.toggle('on',auto);
+  $('#tabManual').classList.toggle('on',!auto);
+  $('#autoPane').style.display=auto?'':'none';
+  $('#manualPane').style.display=auto?'none':'';
+  $('#runBtn').innerHTML=`<span class="dot"></span> ${auto?'자동 발굴':'스코어링'} 실행`;
+}
+$('#tabAuto').addEventListener('click',()=>setMode(true));
+$('#tabManual').addEventListener('click',()=>setMode(false));
+
+// 카테고리 목록 로드 (서버 실패 시 기본값)
+const FALLBACK_CATS=['캠핑/아웃도어','주방','반려동물','유아/키즈','차량용품','생활/수납','디지털 소품','뷰티/헬스'];
+function fillCats(list){
+  $('#catSel').innerHTML=list.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+fillCats(FALLBACK_CATS);
+fetch(API+'/api/categories').then(r=>r.json()).then(d=>{ if(d.categories&&d.categories.length) fillCats(d.categories); }).catch(()=>{});
+
+// API 호출: 401이면 (비밀번호가 서버에서 바뀐 경우) 로그인 화면으로 복귀
+async function callApi(path, payload){
+  const res = await fetch(API+path,{
     method:'POST',
     headers:{
       'Content-Type':'application/json',
@@ -305,30 +352,41 @@ function verdict(score, comp){
 
 function fmt(n){return n.toLocaleString('ko-KR');}
 
+function weights(){
+  return {
+    w_competition:+$('#wc').value/100,
+    w_margin:+$('#wm').value/100,
+    w_volume:+$('#wv').value/100,
+    w_trend:+$('#wt').value/100,
+  };
+}
+
 $('#runBtn').addEventListener('click', async ()=>{
-  const kws=parseInput();
-  if(!kws.length){ alert('키워드를 한 개 이상 입력하세요.'); return; }
   const sum=syncWeights();
   if(sum!==100){ if(!confirm('가중치 합이 100%가 아닙니다. 그대로 진행할까요?')) return; }
 
-  const btn=$('#runBtn'); btn.disabled=true; btn.innerHTML='<span class="dot"></span> 계산 중…';
+  let path, payload;
+  if(autoMode){
+    path='/api/discover';
+    payload={category:$('#catSel').value, limit:+$('#cntSel').value, ...weights()};
+  }else{
+    const kws=parseInput();
+    if(!kws.length){ alert('키워드를 한 개 이상 입력하세요.'); return; }
+    path='/api/score';
+    payload={keywords:kws, expand:$('#expand').checked, supply:$('#supplyChk').checked, ...weights()};
+  }
+
+  const btn=$('#runBtn'); btn.disabled=true;
+  btn.innerHTML=`<span class="dot"></span> ${autoMode?'키워드 스캔 중… (수십 초 걸릴 수 있음)':'계산 중…'}`;
   try{
-    const res=await callScore({
-      keywords:kws,
-      expand:$('#expand').checked,
-      supply:$('#supplyChk').checked,
-      w_competition:+$('#wc').value/100,
-      w_margin:+$('#wm').value/100,
-      w_volume:+$('#wv').value/100,
-      w_trend:+$('#wt').value/100,
-    });
+    const res=await callApi(path, payload);
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+    if(!res.ok||data.error) throw new Error(data.error||('HTTP '+res.status));
     render(data);
   }catch(e){
     $('#resBody').innerHTML=`<div class="empty">오류가 발생했습니다: ${e.message}</div>`;
   }finally{
-    btn.disabled=false; btn.innerHTML='<span class="dot"></span> 스코어링 실행';
+    btn.disabled=false; setMode(autoMode);
   }
 });
 
@@ -356,7 +414,12 @@ let lastData=null;
 function render(data){
   lastData=data;
   $('#csvBtn').disabled=!data.results.length;
-  let meta=`${data.count}개 · ${data.mock?'목업':'실데이터'}`;
+  let meta;
+  if(data.scanned!=null){
+    meta=`${data.category} · ${fmt(data.scanned)}개 스캔 → ${data.count}개 선별 · ${data.mock?'목업':'실데이터'}`;
+  }else{
+    meta=`${data.count}개 · ${data.mock?'목업':'실데이터'}`;
+  }
   if(data.supply_mode) meta+=` · 공급처 ${data.supply_mode==='live'?'실데이터':data.supply_mode==='mock'?'목업':'조회 실패'}`;
   $('#resMeta').textContent=meta;
   if(!data.results.length){ $('#resBody').innerHTML='<div class="empty">결과 없음</div>'; return; }
