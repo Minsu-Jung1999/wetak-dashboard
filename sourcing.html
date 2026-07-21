@@ -127,7 +127,7 @@
       <div class="card full">
         <div class="card-h">
           <div><span class="t">우체국쇼핑 공급업체</span> <span class="badge good">위탁 가능성 높음</span></div>
-          <span class="sub">국가 검증 입점사 · 택배 발송 시스템 보유 — 상세↗에서 공급업체·연락처 확인</span>
+          <span class="sub">국가 검증 입점사 · 택배 시스템 보유 · <b style="color:var(--warn)">시즌·재고에 따라 판매종료 상품 있음 → 검색↗에서 실시간 확인</b></span>
         </div>
         <div id="epostBody"></div>
       </div>
@@ -259,7 +259,7 @@ function render(d){
           <div class="s-meta">${it.size||''}</div>
         </div>
         <span class="s-price">${it.price?fmt(it.price)+'원':''}</span>
-        <a class="lnk" href="${it.url}" target="_blank" rel="noopener">상세·공급업체↗</a>
+        <a class="lnk" href="${it.url}" target="_blank" rel="noopener">우체국쇼핑 검색↗</a>
         ${contactChk(it.name)}
       </div>`).join('');
   }
