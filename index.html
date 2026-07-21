@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위탁 스코어러 · 키워드 발굴 콘솔 (실데이터)</title>
+<style>
+  :root{
+    --ink:#12130f;
+    --paper:#f0ede3;
+    --paper-2:#e6e2d4;
+    --line:#c9c4b2;
+    --signal:#1f5c3d;       /* 딥 그린 = 통과 */
+    --signal-soft:#e2ecdf;
+    --warn:#b6552a;         /* 클레이 = 경고 */
+    --dim:#6a6858;
+    --hi:#d8ff3e;           /* 형광 라임 = 강조 액센트 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Helvetica Neue',-apple-system,'Segoe UI',sans-serif;
+    background:var(--paper);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.5;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+
+  /* Header */
+  header{border-bottom:2px solid var(--ink);padding:26px 0 20px;margin-bottom:0}
+  .brandline{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .brand{font-size:12px;letter-spacing:.32em;text-transform:uppercase;font-weight:700}
+  .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
+  .mock-tag.live{color:var(--signal);border-color:var(--signal)}
+  h1{font-size:clamp(30px,5vw,54px);font-weight:800;letter-spacing:-.02em;line-height:1.02;margin-top:14px}
+  h1 em{font-style:normal;color:var(--warn)}
+  .sub{color:var(--dim);font-size:14px;margin-top:8px;max-width:60ch}
+
+  /* Input panel */
+  .panel{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:26px}
+  .panel-h{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;font-weight:700}
+  textarea{
+    width:100%;min-height:120px;resize:vertical;padding:14px;border:1px solid var(--line);
+    border-radius:10px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:13px;
+    background:var(--paper);color:var(--ink);line-height:1.7;
+  }
+  textarea:focus{outline:2px solid var(--signal);outline-offset:1px}
+  .hint{font-size:12px;color:var(--dim);margin-top:8px}
+  .hint code{background:var(--paper);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+
+  .weights{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}
+  @media(max-width:640px){.weights{grid-template-columns:repeat(2,1fr)}}
+  .wgt label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:6px;font-weight:700}
+  .wgt input[type=range]{width:100%;accent-color:var(--signal)}
+  .wgt .val{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+  .wsum{font-size:12px;color:var(--dim);margin-top:12px}
+  .wsum.bad{color:var(--warn);font-weight:700}
+
+  .run{
+    margin-top:22px;background:var(--ink);color:var(--hi);border:none;cursor:pointer;
+    font-weight:800;font-size:15px;letter-spacing:.02em;padding:15px 30px;border-radius:10px;
+    display:inline-flex;align-items:center;gap:10px;transition:transform .08s;
+  }
+  .run:hover{transform:translateY(-1px)}
+  .run:active{transform:translateY(0)}
+  .run:disabled{opacity:.5;cursor:wait}
+  .run .dot{width:8px;height:8px;background:var(--hi);border-radius:99px}
+
+  /* Results */
+  .results{margin-top:34px;padding-bottom:80px}
+  .res-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:4px}
+  .res-h h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase}
+  .res-h span{font-size:13px;color:var(--dim)}
+
+  .row{
+    display:grid;grid-template-columns:44px 1fr 130px 96px 120px 100px;gap:16px;align-items:center;
+    padding:16px 8px;border-bottom:1px solid var(--line);
+  }
+  .row.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:2px solid var(--ink)}
+  @media(max-width:760px){
+    .row{grid-template-columns:36px 1fr 90px;grid-auto-rows:auto}
+    .row .col-hide{display:none}
+  }
+  .rank{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--dim)}
+  .rank.top{color:var(--signal)}
+  .kw{font-weight:700;font-size:16px}
+  .kw .meta{display:block;font-size:12px;color:var(--dim);font-weight:400;margin-top:2px}
+  .num{font-variant-numeric:tabular-nums}
+  .comp-badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;display:inline-block}
+  .comp-낮음{background:var(--signal-soft);color:var(--signal)}
+  .comp-중간{background:#f0e9d6;color:#8a7523}
+  .comp-높음{background:#f3e0d6;color:var(--warn)}
+
+  .score-cell{text-align:right}
+  .score-num{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .score-bar{height:4px;background:var(--paper-2);border-radius:99px;margin-top:6px;overflow:hidden}
+  .score-bar i{display:block;height:100%;background:var(--signal)}
+  .verdict{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+  .v-pass{color:var(--signal)}
+  .v-hold{color:#8a7523}
+  .v-skip{color:var(--warn)}
+
+  .empty{color:var(--dim);text-align:center;padding:60px 0;font-size:14px}
+  .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:18px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <div class="brand">위탁 스코어러 · Sourcing Console</div>
+      <div id="mockTag" class="mock-tag">데이터 소스 확인 중…</div>
+    </div>
+    <h1>팔릴 걸 <em>먼저</em> 고른다.</h1>
+    <p class="sub">키워드를 넣으면 검색량·경쟁도·마진·트렌드를 하나의 점수로 압축합니다. 감이 아니라 숫자로 등록 후보를 거릅니다.</p>
+  </header>
+
+  <div class="panel">
+    <div class="panel-h">① 후보 키워드 입력</div>
+    <textarea id="kwInput" placeholder="한 줄에 하나씩 입력하세요.
+공급가·판매가를 함께 넣으면 마진까지 계산합니다 (쉼표 구분).
+
+예)
+무선 안마기
+캠핑 폴딩박스, 8500, 19900
+강아지 자동급식기, 22000, 45000"></textarea>
+    <div class="hint">형식: <code>키워드</code> 또는 <code>키워드, 공급가, 판매가</code> — 가격을 넣으면 마진 점수가 반영됩니다.</div>
+
+    <div class="panel-h" style="margin-top:24px">② 가중치 조정</div>
+    <div class="weights">
+      <div class="wgt"><label>경쟁도 <span class="val" id="lc">35</span></label><input type="range" id="wc" min="0" max="60" value="35"></div>
+      <div class="wgt"><label>마진 <span class="val" id="lm">30</span></label><input type="range" id="wm" min="0" max="60" value="30"></div>
+      <div class="wgt"><label>검색량 <span class="val" id="lv">20</span></label><input type="range" id="wv" min="0" max="60" value="20"></div>
+      <div class="wgt"><label>트렌드 <span class="val" id="lt">15</span></label><input type="range" id="wt" min="0" max="60" value="15"></div>
+    </div>
+    <div class="wsum" id="wsum">합계 100%</div>
+
+    <button class="run" id="runBtn"><span class="dot"></span> 스코어링 실행</button>
+  </div>
+
+  <div class="results">
+    <div class="res-h">
+      <h2>③ 등록 후보 랭킹</h2>
+      <span id="resMeta"></span>
+    </div>
+    <div id="resBody">
+      <div class="empty">아직 결과가 없습니다. 키워드를 넣고 실행하세요.</div>
+    </div>
+  </div>
+
+  <div class="foot">점수는 상대 판단용 참고치입니다. 상위 후보는 반드시 실제 공급처 위탁가·재고를 대조한 뒤 등록하세요.</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+// Supabase에 배포된 스코어링 API (이 파일은 로컬에서 열어도 동작한다)
+const API = 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
+const sliders = ['wc','wm','wv','wt'];
+const labels = {wc:'lc',wm:'lm',wv:'lv',wt:'lt'};
+
+function syncWeights(){
+  let sum=0;
+  sliders.forEach(id=>{const v=+$('#'+id).value; $('#'+labels[id]).textContent=v; sum+=v;});
+  const el=$('#wsum');
+  el.textContent=`합계 ${sum}%`;
+  el.classList.toggle('bad', sum!==100);
+  return sum;
+}
+sliders.forEach(id=>$('#'+id).addEventListener('input',syncWeights));
+syncWeights();
+
+fetch(API+'/api/status').then(r=>r.json()).then(d=>{
+  const t=$('#mockTag');
+  if(d.mock_mode){ t.textContent='● 목업 데이터 (API 키 미설정)'; }
+  else { t.textContent='● 네이버 API 실시간'; t.classList.add('live'); }
+}).catch(()=>{
+  $('#mockTag').textContent='● 서버 연결 실패';
+});
+
+function parseInput(){
+  return $('#kwInput').value.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const p=line.split(',').map(x=>x.trim());
+    const o={keyword:p[0]};
+    if(p[1]) o.supply_price=parseFloat(p[1]);
+    if(p[2]) o.sell_price=parseFloat(p[2]);
+    return o;
+  });
+}
+
+function verdict(score, comp){
+  if(score>=62 && comp!=='높음') return ['통과','v-pass'];
+  if(score>=45) return ['보류','v-hold'];
+  return ['제외','v-skip'];
+}
+
+function fmt(n){return n.toLocaleString('ko-KR');}
+
+$('#runBtn').addEventListener('click', async ()=>{
+  const kws=parseInput();
+  if(!kws.length){ alert('키워드를 한 개 이상 입력하세요.'); return; }
+  const sum=syncWeights();
+  if(sum!==100){ if(!confirm('가중치 합이 100%가 아닙니다. 그대로 진행할까요?')) return; }
+
+  const btn=$('#runBtn'); btn.disabled=true; btn.innerHTML='<span class="dot"></span> 계산 중…';
+  try{
+    const res=await fetch(API+'/api/score',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        keywords:kws,
+        w_competition:+$('#wc').value/100,
+        w_margin:+$('#wm').value/100,
+        w_volume:+$('#wv').value/100,
+        w_trend:+$('#wt').value/100,
+      })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+    render(data);
+  }catch(e){
+    $('#resBody').innerHTML=`<div class="empty">오류가 발생했습니다: ${e.message}</div>`;
+  }finally{
+    btn.disabled=false; btn.innerHTML='<span class="dot"></span> 스코어링 실행';
+  }
+});
+
+function render(data){
+  $('#resMeta').textContent=`${data.count}개 · ${data.mock?'목업':'실데이터'}`;
+  if(!data.results.length){ $('#resBody').innerHTML='<div class="empty">결과 없음</div>'; return; }
+  let html=`<div class="row head">
+    <div>#</div><div>키워드</div>
+    <div class="col-hide">월 검색량</div>
+    <div class="col-hide">경쟁</div>
+    <div class="col-hide">마진</div>
+    <div class="score-cell">점수</div></div>`;
+  data.results.forEach((r,i)=>{
+    const [vtxt,vcls]=verdict(r.total_score,r.competition);
+    const marginTxt=r.margin_rate!=null?`${r.margin_rate}%`:'—';
+    html+=`<div class="row">
+      <div class="rank ${i===0?'top':''}">${i+1}</div>
+      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}</span></div>
+      <div class="num col-hide">${fmt(r.search_volume)}</div>
+      <div class="col-hide"><span class="comp-badge comp-${r.competition}">${r.competition}</span></div>
+      <div class="num col-hide">${marginTxt}</div>
+      <div class="score-cell">
+        <div class="score-num">${r.total_score}</div>
+        <div class="score-bar"><i style="width:${r.total_score}%"></i></div>
+        <div class="verdict ${vcls}">${vtxt}</div>
+      </div>
+    </div>`;
+  });
+  $('#resBody').innerHTML=html;
+}
+</script>
+</body>
+</html>
