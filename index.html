@@ -29,6 +29,10 @@
   header{border-bottom:2px solid var(--ink);padding:18px 0}
   .brandline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
   .brand{font-size:13px;letter-spacing:.32em;text-transform:uppercase;font-weight:800}
+  .nav{display:flex;gap:6px}
+  .nav a{font-size:13px;font-weight:700;color:var(--dim);text-decoration:none;padding:7px 14px;border-radius:99px;border:1px solid transparent}
+  .nav a:hover{color:var(--ink);border-color:var(--line)}
+  .nav a.on{background:var(--ink);color:var(--hi)}
   .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
   .mock-tag.live{color:var(--signal);border-color:var(--signal)}
 
@@ -190,7 +194,14 @@
 <div class="wrap">
   <header>
     <div class="brandline">
-      <div class="brand">위탁 스코어러 · Sourcing Console</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div class="brand">위탁 스코어러</div>
+        <nav class="nav">
+          <a href="./" class="on">대시보드</a>
+          <a href="seasonal.html">제철 레이더</a>
+          <a href="sourcing.html">소싱처</a>
+        </nav>
+      </div>
       <div id="mockTag" class="mock-tag">데이터 소스 확인 중…</div>
     </div>
   </header>
@@ -258,9 +269,9 @@ const FALLBACK_CATS = ['캠핑/아웃도어','주방','반려동물','유아/키
 
 function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
 function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
-// 네이버쇼핑에서 해당 키워드 검색 결과로 이동
-function shopUrl(kw){ return 'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(kw); }
-function storeBtn(kw){ return `<a class="store-btn" href="${shopUrl(kw)}" target="_blank" rel="noopener" title="네이버쇼핑에서 '${kw}' 검색">스토어↗</a>`; }
+// 쿠팡에서 해당 키워드 검색 결과로 이동 (제철 전략: 쿠팡 빈틈·가격 확인)
+function shopUrl(kw){ return 'https://www.coupang.com/np/search?q='+encodeURIComponent(kw); }
+function storeBtn(kw){ return `<a class="store-btn" href="${shopUrl(kw)}" target="_blank" rel="noopener" title="쿠팡에서 '${kw}' 검색">쿠팡↗</a>`; }
 
 function todayStr(){
   const d=new Date(), p=n=>String(n).padStart(2,'0');
