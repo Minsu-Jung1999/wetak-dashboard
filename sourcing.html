@@ -132,7 +132,7 @@
       <div class="card">
         <div class="card-h">
           <div><span class="t">GAP 인증 생산자</span> <span class="badge" id="gapBadge"></span></div>
-          <span class="sub">생산계획량 순</span>
+          <span class="sub">gap.go.kr 인증농가 조회 (최신 인증순)</span>
         </div>
         <div id="gapBody"></div>
       </div>
@@ -258,17 +258,17 @@ function render(d){
       </div>`).join('');
   }
   // GAP
-  $('#gapBadge').textContent=d.gap.mode==='live'?'실데이터':'목업';
+  $('#gapBadge').textContent=d.gap.mode==='live'?'실데이터':(d.gap.mode==='unsupported'?'미지원 품목':'목업');
   $('#gapBadge').className='badge '+(d.gap.mode==='live'?'good':'mock');
   $('#gapBody').innerHTML=d.gap.items.length?d.gap.items.map(g=>`
     <div class="s-item">
       <div class="s-body">
-        <div class="s-name">${g.region}</div>
-        <div class="s-meta">${g.item} · 재배 ${fmt(g.area)}㎡</div>
+        <div class="s-name">${g.group}</div>
+        <div class="s-meta">${g.region} · 대표 ${g.rep} · 인증 ${g.cert_no}</div>
       </div>
-      <span class="s-price">${fmt(g.plan_qty)}톤/년</span>
-      <a class="lnk" href="${searchLink(g.region+' '+d.item+' 농장')}" target="_blank" rel="noopener">검색↗</a>
-    </div>`).join(''):'<div class="empty">데이터 없음</div>';
+      <a class="lnk" href="${searchLink(g.group+' '+g.region)}" target="_blank" rel="noopener">검색↗</a>
+      ${contactChk(g.group)}
+    </div>`).join(''):'<div class="empty">'+(d.gap.mode==='unsupported'?'이 품목은 제철 캘린더 품목만 지원됩니다':'데이터 없음')+'</div>';
   // 지역법인
   const lm=d.local.mode;
   $('#localBadge').textContent=lm==='live'?'실데이터':(lm==='no-scope'?'검색 API 권한 필요':'목업');
