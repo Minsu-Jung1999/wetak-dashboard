@@ -254,9 +254,18 @@ function trendMark(t){
   if(t<=-0.15) return '<span class="tr-dn">▼</span>';
   return '<span class="tr-fl">–</span>';
 }
+function serverPriceOf(name){
+  if(!seasonData) return null;
+  const it=[...seasonData.current,...seasonData.upcoming].find(x=>x.name===name);
+  return it && it.coupang_price!=null ? it.coupang_price : null;
+}
 function coupangPriceOf(name){
   const p=priceOf(name);
-  return p.manual!=null?p.manual:(p.auto!=null?p.auto:null);
+  // 우선순위: 수동 입력 > 서버(DB 수집기) > 로컬 자동 캐시
+  if(p.manual!=null) return p.manual;
+  const sv=serverPriceOf(name);
+  if(sv!=null) return sv;
+  return p.auto!=null?p.auto:null;
 }
 function marginOf(name, wholesale){
   const p=priceOf(name);
@@ -283,7 +292,7 @@ function renderSection(list, elId){
       <div class="col-hide">${it.competition?`<span class="comp-badge comp-${it.competition}">${it.competition}</span>`:'—'}</div>
       <div style="font-size:12px">${trendMark(it.trend_slope)}</div>
       <div class="num col-hide">${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'—'}</div>
-      <div class="num col-hide">${cp?fmt(cp)+'원'+(p.manual!=null?'':'<span style="color:var(--dim);font-size:10px"> 자동</span>'):'—'}</div>
+      <div class="num col-hide">${cp?fmt(cp)+'원'+(p.manual!=null?'':(serverPriceOf(it.name)!=null?'<span style="color:var(--signal);font-size:10px"> 수집</span>':'<span style="color:var(--dim);font-size:10px"> 자동</span>')):'—'}</div>
       <div class="num col-hide">${mg!=null?`<span class="margin-val ${mg<0?'margin-neg':''}">${mg}%</span>`:'—'}</div>
     </div>`;
   });
