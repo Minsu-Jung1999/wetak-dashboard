@@ -121,7 +121,7 @@
   <div class="main">
     <div class="sec-h">
       <h2>지금 제철 — <em id="curMonth"></em>월</h2>
-      <span class="sub">행을 클릭하면 쿠팡가·마진 계산기가 열립니다</span>
+      <span class="sub">행 클릭 = 마진 계산기 · <a id="bmk" href="#" style="color:var(--signal);font-weight:700" title="이 링크를 브라우저 북마크바로 드래그해 두고, 쿠팡 검색 결과에서 누르면 최저가가 자동 입력됩니다">📌 가격 캡처 북마클릿 (북마크바로 드래그)</a></span>
     </div>
     <div class="card"><div id="curBody"><div class="empty"><span class="spin"></span>불러오는 중…</div></div></div>
 
@@ -317,7 +317,39 @@ document.addEventListener('click', e=>{
   recalc();
 });
 
-async function boot(){ loadSeasonal(); }
+// ---- 북마클릿: 쿠팡 검색 결과에서 최저가를 이 페이지로 전송 ----
+// (드래그해서 북마크바에 두고, 쿠팡 검색 페이지에서 클릭)
+(function(){
+  const code=`(function(){var q=new URLSearchParams(location.search).get('q')||'';`+
+    `var ps=[];document.querySelectorAll('.price-value').forEach(function(e){`+
+    `var n=parseInt(e.textContent.replace(/[^0-9]/g,''));if(n>=1000)ps.push(n)});`+
+    `if(!ps.length){alert('가격을 찾지 못했습니다. 쿠팡 검색 결과 페이지에서 눌러주세요.');return}`+
+    `var m=Math.min.apply(null,ps);`+
+    `window.open('${location.origin}${location.pathname.replace(/[^/]*$/,'')}seasonal.html?cpk='+encodeURIComponent(q)+'&cpv='+m,'_blank')})();`;
+  $('#bmk').setAttribute('href','javascript:'+encodeURIComponent(code));
+  $('#bmk').addEventListener('click',e=>{ e.preventDefault(); alert('클릭이 아니라, 이 링크를 브라우저 북마크바로 드래그해서 저장한 뒤 쿠팡 검색 결과 페이지에서 눌러주세요.'); });
+})();
+
+// 북마클릿에서 전달된 가격 반영 (?cpk=키워드&cpv=가격)
+function applyCapturedPrice(){
+  const sp=new URLSearchParams(location.search);
+  const kw=sp.get('cpk'), val=parseInt(sp.get('cpv'),10);
+  if(kw && val>0){
+    priceSet(kw,{manual:val, sell:val});
+    history.replaceState(null,'',location.pathname);
+    return kw;
+  }
+  return null;
+}
+
+async function boot(){
+  const captured=applyCapturedPrice();
+  await loadSeasonal();
+  if(captured && seasonData){
+    const list=[...seasonData.current,...seasonData.upcoming];
+    if(list.some(x=>x.name===captured)) renderAll();
+  }
+}
 </script>
 </body>
 </html>
