@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>위탁 스코어러 · 키워드 발굴 콘솔 (실데이터)</title>
+<title>위탁 스코어러 · 키워드 발굴 콘솔</title>
 <style>
   :root{
     --ink:#12130f;
@@ -45,6 +45,8 @@
   textarea:focus{outline:2px solid var(--signal);outline-offset:1px}
   .hint{font-size:12px;color:var(--dim);margin-top:8px}
   .hint code{background:var(--paper);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+  .expand-opt{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;cursor:pointer;color:var(--ink)}
+  .expand-opt input{accent-color:var(--signal);width:15px;height:15px}
 
   .weights{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}
   @media(max-width:640px){.weights{grid-template-columns:repeat(2,1fr)}}
@@ -83,6 +85,7 @@
   .rank.top{color:var(--signal)}
   .kw{font-weight:700;font-size:16px}
   .kw .meta{display:block;font-size:12px;color:var(--dim);font-weight:400;margin-top:2px}
+  .kw .via{color:var(--signal);font-weight:700}
   .num{font-variant-numeric:tabular-nums}
   .comp-badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;display:inline-block}
   .comp-낮음{background:var(--signal-soft);color:var(--signal)}
@@ -123,6 +126,7 @@
 캠핑 폴딩박스, 8500, 19900
 강아지 자동급식기, 22000, 45000"></textarea>
     <div class="hint">형식: <code>키워드</code> 또는 <code>키워드, 공급가, 판매가</code> — 가격을 넣으면 마진 점수가 반영됩니다.</div>
+    <label class="expand-opt"><input type="checkbox" id="expand"> 연관 키워드 자동 확장 — 네이버 연관검색어를 키워드당 최대 20개까지 함께 스코어링</label>
 
     <div class="panel-h" style="margin-top:24px">② 가중치 조정</div>
     <div class="weights">
@@ -151,8 +155,10 @@
 
 <script>
 const $ = s => document.querySelector(s);
-// Supabase에 배포된 스코어링 API (이 파일은 로컬에서 열어도 동작한다)
-const API = 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
+// API 자동 감지: 로컬 FastAPI(uvicorn)로 서빙 중이면 same-origin,
+// 그 외(GitHub Pages, 파일 더블클릭)는 Supabase에 배포된 API를 호출한다.
+const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
+const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
 const sliders = ['wc','wm','wv','wt'];
 const labels = {wc:'lc',wm:'lm',wv:'lv',wt:'lt'};
 
@@ -185,6 +191,25 @@ function parseInput(){
   });
 }
 
+// 비밀번호 게이트: 서버가 401을 주면 입력받아 저장 후 재시도 (취소하면 중단)
+async function callScore(payload){
+  const res = await fetch(API+'/api/score',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Gate-Key': localStorage.getItem('gateKey')||'',
+    },
+    body:JSON.stringify(payload),
+  });
+  if(res.status===401){
+    const pw = prompt('비밀번호를 입력하세요');
+    if(pw===null) throw new Error('비밀번호 입력이 취소되었습니다.');
+    localStorage.setItem('gateKey', pw);
+    return callScore(payload);
+  }
+  return res;
+}
+
 function verdict(score, comp){
   if(score>=62 && comp!=='높음') return ['통과','v-pass'];
   if(score>=45) return ['보류','v-hold'];
@@ -201,15 +226,13 @@ $('#runBtn').addEventListener('click', async ()=>{
 
   const btn=$('#runBtn'); btn.disabled=true; btn.innerHTML='<span class="dot"></span> 계산 중…';
   try{
-    const res=await fetch(API+'/api/score',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        keywords:kws,
-        w_competition:+$('#wc').value/100,
-        w_margin:+$('#wm').value/100,
-        w_volume:+$('#wv').value/100,
-        w_trend:+$('#wt').value/100,
-      })
+    const res=await callScore({
+      keywords:kws,
+      expand:$('#expand').checked,
+      w_competition:+$('#wc').value/100,
+      w_margin:+$('#wm').value/100,
+      w_volume:+$('#wv').value/100,
+      w_trend:+$('#wt').value/100,
     });
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
@@ -233,9 +256,10 @@ function render(data){
   data.results.forEach((r,i)=>{
     const [vtxt,vcls]=verdict(r.total_score,r.competition);
     const marginTxt=r.margin_rate!=null?`${r.margin_rate}%`:'—';
+    const viaTxt=r.via?` · <span class="via">연관 ← ${r.via}</span>`:'';
     html+=`<div class="row">
       <div class="rank ${i===0?'top':''}">${i+1}</div>
-      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}</span></div>
+      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}${viaTxt}</span></div>
       <div class="num col-hide">${fmt(r.search_volume)}</div>
       <div class="col-hide"><span class="comp-badge comp-${r.competition}">${r.competition}</span></div>
       <div class="num col-hide">${marginTxt}</div>
