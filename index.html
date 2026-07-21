@@ -103,9 +103,34 @@
 
   .empty{color:var(--dim);text-align:center;padding:60px 0;font-size:14px}
   .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:18px 0;text-align:center}
+
+  /* 로그인 게이트 */
+  .gate{position:fixed;inset:0;background:var(--paper);z-index:99;display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate.off{display:none}
+  .gate-box{width:100%;max-width:380px;background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:34px 28px}
+  .gate-box .brand{margin-bottom:18px}
+  .gate-box h2{font-size:24px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
+  .gate-box p{font-size:13px;color:var(--dim);margin-bottom:18px}
+  .gate-box input{
+    width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;
+    font-size:16px;background:var(--paper);color:var(--ink);letter-spacing:.2em;
+  }
+  .gate-box input:focus{outline:2px solid var(--signal);outline-offset:1px}
+  .gate-box .run{width:100%;justify-content:center;margin-top:14px}
+  .gate-err{font-size:13px;color:var(--warn);font-weight:700;margin-top:12px;min-height:20px}
 </style>
 </head>
 <body>
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="brand">위탁 스코어러 · Sourcing Console</div>
+    <h2>비밀번호 입력</h2>
+    <p>등록된 사용자만 스코어링을 실행할 수 있습니다.</p>
+    <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
+    <button class="run" id="gateBtn"><span class="dot"></span> 입장</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <div class="brandline">
@@ -176,10 +201,43 @@ syncWeights();
 fetch(API+'/api/status').then(r=>r.json()).then(d=>{
   const t=$('#mockTag');
   if(d.mock_mode){ t.textContent='● 목업 데이터 (API 키 미설정)'; }
-  else { t.textContent='● 네이버 API 실시간'; t.classList.add('live'); }
+  else {
+    t.textContent = d.trend_mock ? '● 네이버 API 실시간' : '● 네이버 API 실시간 · 트렌드 자동';
+    t.classList.add('live');
+  }
 }).catch(()=>{
   $('#mockTag').textContent='● 서버 연결 실패';
 });
+
+// ---- 로그인 게이트 ----
+// 진입 시 저장된 비밀번호를 서버에 검증하고, 통과해야 대시보드가 열린다.
+// (로컬 FastAPI는 게이트가 없어 자동 통과)
+async function verifyKey(key){
+  try{
+    const r = await fetch(API+'/api/verify',{headers:{'X-Gate-Key':key}});
+    return r.ok;
+  }catch(e){ return null; } // 서버 연결 실패
+}
+function openDashboard(){ $('#gate').classList.add('off'); }
+function gateError(msg){ $('#gateErr').textContent = msg; }
+
+async function submitGate(){
+  const pw = $('#gatePw').value;
+  const btn = $('#gateBtn'); btn.disabled = true;
+  const ok = await verifyKey(pw);
+  btn.disabled = false;
+  if(ok){ localStorage.setItem('gateKey', pw); openDashboard(); }
+  else if(ok===null){ gateError('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'); }
+  else { gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
+}
+$('#gateBtn').addEventListener('click', submitGate);
+$('#gatePw').addEventListener('keydown', e=>{ if(e.key==='Enter') submitGate(); });
+
+(async ()=>{
+  const ok = await verifyKey(localStorage.getItem('gateKey')||'');
+  if(ok){ openDashboard(); }
+  else { if(ok===null) gateError('서버에 연결할 수 없습니다.'); $('#gatePw').focus(); }
+})();
 
 function parseInput(){
   return $('#kwInput').value.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
@@ -191,7 +249,7 @@ function parseInput(){
   });
 }
 
-// 비밀번호 게이트: 서버가 401을 주면 입력받아 저장 후 재시도 (취소하면 중단)
+// 스코어링 호출: 401이면 (비밀번호가 서버에서 바뀐 경우) 로그인 화면으로 복귀
 async function callScore(payload){
   const res = await fetch(API+'/api/score',{
     method:'POST',
@@ -202,10 +260,10 @@ async function callScore(payload){
     body:JSON.stringify(payload),
   });
   if(res.status===401){
-    const pw = prompt('비밀번호를 입력하세요');
-    if(pw===null) throw new Error('비밀번호 입력이 취소되었습니다.');
-    localStorage.setItem('gateKey', pw);
-    return callScore(payload);
+    localStorage.removeItem('gateKey');
+    $('#gate').classList.remove('off');
+    gateError('비밀번호를 다시 입력해 주세요.');
+    throw new Error('비밀번호 인증이 필요합니다.');
   }
   return res;
 }
