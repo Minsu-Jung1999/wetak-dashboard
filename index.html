@@ -438,6 +438,7 @@ function renderTable(ts){
     const i=start+j;
     const [vtxt,vcls]=rowVerdict(r);
     let metaTxt=`PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}`;
+    if(r.ad_clicks!=null&&r.ad_clicks>0) metaTxt+=` · 광고클릭 ${fmt(r.ad_clicks)}/월`;
     if(r.via) metaTxt+=` · <span class="via">←${r.via}</span>`;
     const done=chkCount(r.keyword);
     if(done) metaTxt+=` · <span class="chk-badge">검증 ${done}/${CHK_ITEMS.length}</span>`;
@@ -513,12 +514,13 @@ $('#tblBody').addEventListener('click', e=>{
 function csvCell(v){ return `"${String(v??'').replace(/"/g,'""')}"`; }
 $('#csvBtn').addEventListener('click', ()=>{
   if(!curData||!curData.results.length) return;
-  const head=['순위','키워드','연관출처','월검색량','PC','모바일','경쟁','점수_검색량','점수_경쟁','점수_트렌드','총점','판정','검증진행','실판매메모'];
+  const head=['순위','키워드','연관출처','월검색량','PC','모바일','경쟁','광고깊이','광고클릭','점수_검색량','점수_경쟁','점수_트렌드','총점','판정','검증진행','실판매메모'];
   const rows=curData.results.map((r,i)=>{
     const [vtxt]=rowVerdict(r);
     const st=chkOf(r.keyword);
     return [
       i+1, r.keyword, r.via||'', r.search_volume, r.pc, r.mobile, r.competition,
+      r.ad_depth??'', r.ad_clicks??'',
       r.scores.volume, r.scores.competition, r.scores.trend,
       r.total_score, vtxt, `${st.c.filter(Boolean).length}/${CHK_ITEMS.length}`, st.m||'',
     ].map(csvCell).join(',');
