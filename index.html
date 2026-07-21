@@ -44,6 +44,8 @@
   }
   .cat:hover{border-color:var(--ink);color:var(--ink)}
   .cat.on{background:var(--ink);color:var(--hi);border-color:var(--ink)}
+  .warm{font-size:12px;color:var(--dim);margin:-6px 0 12px 4px;min-height:18px}
+  .warm .spin{width:11px;height:11px;margin-right:6px}
 
   /* Card */
   .card{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -179,6 +181,7 @@
   <div class="layout">
     <div class="main">
       <div class="cats" id="cats"></div>
+      <div class="warm" id="warmTag"></div>
       <div class="card">
         <div class="card-h">
           <div>
@@ -224,6 +227,14 @@ const FALLBACK_CATS = ['캠핑/아웃도어','주방','반려동물','유아/키
 
 function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
 function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
+function todayStr(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function dateOf(ts){
+  const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
 
 // ---- 캐시 (localStorage) — 재방문 시 API 호출 없이 이전 데이터 사용 ----
 function catCache(){ try{ return JSON.parse(localStorage.getItem('wetak-cats-v1'))||{}; }catch(e){ return {}; } }
@@ -337,6 +348,25 @@ $('#cats').addEventListener('click', e=>{
   if(b && b.dataset.c!==curCat) selectCat(b.dataset.c);
 });
 
+// 카테고리 조회 (동시 중복 호출 방지 — 워밍업과 사용자 클릭이 겹쳐도 1회만 호출)
+const inflight={};
+function fetchCat(cat, force=false){
+  if(inflight[cat]) return inflight[cat];
+  const cached=catCacheGet(cat);
+  if(cached && !force) return Promise.resolve(cached);
+  inflight[cat]=(async()=>{
+    try{
+      const res=await apiPost('/api/discover',{category:cat, limit:FETCH_LIMIT});
+      const data=await res.json();
+      if(!res.ok||data.error) throw new Error(data.error||('HTTP '+res.status));
+      const entry={ts:Date.now(), data};
+      catCacheSet(cat, entry);
+      return entry;
+    }finally{ delete inflight[cat]; }
+  })();
+  return inflight[cat];
+}
+
 async function selectCat(cat, force=false){
   curCat=cat; curPage=1;
   localStorage.setItem('wetak-lastcat', cat);
@@ -344,26 +374,45 @@ async function selectCat(cat, force=false){
   $('#catTitle').textContent=`등록 후보 랭킹 — ${cat}`;
 
   const cached=catCacheGet(cat);
-  if(cached && !force){ curData=cached.data; renderTable(cached.ts); return; }
+  if(cached && !force && !inflight[cat]){ curData=cached.data; renderTable(cached.ts); return; }
 
-  // 조회한 적 없는 카테고리만 자동 조회 (쿼터 절약)
   curData=null;
   $('#csvBtn').disabled=true;
   $('#pager').style.display='none';
   $('#catSub').textContent='';
   $('#tblBody').innerHTML='<div class="empty"><span class="spin"></span>네이버 연관 키워드를 스캔하고 있습니다… (수십 초 걸릴 수 있음)</div>';
   try{
-    const res=await apiPost('/api/discover',{category:cat, limit:FETCH_LIMIT});
-    const data=await res.json();
-    if(!res.ok||data.error) throw new Error(data.error||('HTTP '+res.status));
-    const entry={ts:Date.now(), data};
-    catCacheSet(cat, entry);
+    const entry=await fetchCat(cat, force);
     if(curCat!==cat) return; // 그 사이 다른 카테고리로 이동한 경우
-    curData=data; renderTable(entry.ts);
+    curData=entry.data; renderTable(entry.ts);
   }catch(e){
     if(curCat!==cat) return;
     $('#tblBody').innerHTML=`<div class="empty">조회 실패: ${e.message}<br><br>우측 상단 "새로 조회"로 다시 시도하세요.</div>`;
   }
+}
+
+// ---- 일일 워밍업: 하루 1회, 전체 카테고리를 순차 조회해 캐시를 채운다 ----
+async function warmupAll(){
+  if(localStorage.getItem('wetak-warmup-v1')===todayStr()) return;
+  const stale=CATS.filter(c=>{
+    const e=catCacheGet(c);
+    return !(e && dateOf(e.ts)===todayStr());
+  });
+  for(let i=0;i<stale.length;i++){
+    const cat=stale[i];
+    $('#warmTag').innerHTML=`<span class="spin"></span>오늘의 캐시 준비 중 — ${cat} (${i+1}/${stale.length})`;
+    try{
+      const entry=await fetchCat(cat, true);
+      // 보고 있는 카테고리가 갱신됐으면 화면도 갱신
+      if(cat===curCat){
+        curData=entry.data;
+        curPage=Math.min(curPage, Math.max(1, Math.ceil(entry.data.results.length/PAGE_SIZE)));
+        renderTable(entry.ts);
+      }
+    }catch(e){ /* 실패한 카테고리는 방문 시 다시 자동 조회됨 */ }
+  }
+  localStorage.setItem('wetak-warmup-v1', todayStr());
+  $('#warmTag').textContent='';
 }
 
 function renderTable(ts){
@@ -485,7 +534,7 @@ $('#csvBtn').addEventListener('click', ()=>{
 
 // ---- 오늘의 인기 검색어 (하루 1회) ----
 async function loadTrending(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayStr();
   let cached=null;
   try{ cached=JSON.parse(localStorage.getItem('wetak-trend-v1')); }catch(e){}
   if(cached && cached.date===today && cached.top){ renderTrending(cached); return; }
@@ -520,7 +569,9 @@ async function boot(){
   }catch(e){}
   const last=localStorage.getItem('wetak-lastcat');
   loadTrending();
-  selectCat(CATS.includes(last)?last:CATS[0]);
+  // 보고 있는 카테고리를 먼저 로드한 뒤, 하루 1회 나머지 카테고리 캐시를 순차로 채운다
+  await selectCat(CATS.includes(last)?last:CATS[0]);
+  warmupAll();
 }
 </script>
 </body>
