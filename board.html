@@ -150,7 +150,11 @@ async function submitGate(){
 }
 $('#gateBtn').addEventListener('click',submitGate);
 $('#gatePw').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGate(); });
-(async()=>{ const ok=await verifyKey(gateKeyVal()); if(ok) openDashboard(); else{ if(ok===null) gateError('서버에 연결할 수 없습니다.'); $('#gatePw').focus(); } })();
+// 저장된 키가 있으면 깜빡임 없이 즉시 열고, 검증은 백그라운드에서 (틀리면 API 401이 잡음)
+if(gateKeyVal()){
+  openDashboard();
+  verifyKey(gateKeyVal()).then(ok=>{ if(ok===false){ localStorage.removeItem('gateKey'); $('#gate').classList.remove('off'); gateError('비밀번호를 다시 입력해 주세요.'); $('#gatePw').focus(); } });
+}else{ $('#gatePw').focus(); }
 
 fetch(API+'/api/status').then(r=>r.json()).then(d=>{
   const t=$('#mockTag');
