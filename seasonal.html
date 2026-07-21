@@ -109,6 +109,7 @@
           <a href="./">대시보드</a>
           <a href="seasonal.html" class="on">제철 레이더</a>
           <a href="sourcing.html">소싱처</a>
+          <a href="board.html">운영 보드</a>
         </nav>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
@@ -329,6 +330,7 @@ document.addEventListener('click', e=>{
     <div style="margin-top:12px">
       <a class="lnk dark" href="${coupangUrl(name)}" target="_blank" rel="noopener">쿠팡에서 확인↗</a>
       <a class="lnk" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 소싱처 찾기 →</a>
+      <button class="lnk" style="cursor:pointer;background:none" id="toBoard">＋ 운영 보드에 담기</button>
     </div>`;
   const recalc=()=>{
     const sell=+panel.querySelector('#cSell').value||null;
@@ -343,6 +345,17 @@ document.addEventListener('click', e=>{
     // 테이블 갱신은 패널 닫을 때
   };
   panel.addEventListener('input',recalc);
+  // 운영 보드에 담기 (현재 스냅샷을 meta로 전달)
+  panel.querySelector('#toBoard').addEventListener('click',()=>{
+    const pp=priceOf(name);
+    const meta={
+      search_volume:it.search_volume, trend_slope:it.trend_slope,
+      coupang_price:coupangPriceOf(name), wholesale:it.wholesale,
+      supply_price:pp.supply??null,
+    };
+    const b64=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+    location.href=`board.html?add=${encodeURIComponent(name)}&type=${encodeURIComponent(it.type)}&meta=${encodeURIComponent(b64)}`;
+  });
   row.after(panel);
   recalc();
 });

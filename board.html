@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운영 보드 · 위탁 스코어러</title>
+<style>
+  :root{
+    --ink:#12130f; --paper:#f0ede3; --paper-2:#e6e2d4; --line:#c9c4b2;
+    --signal:#1f5c3d; --signal-soft:#e2ecdf; --warn:#b6552a; --dim:#6a6858; --hi:#d8ff3e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',-apple-system,'Segoe UI',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+  button{font-family:inherit}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 24px}
+  header{border-bottom:2px solid var(--ink);padding:18px 0}
+  .brandline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{font-size:13px;letter-spacing:.32em;text-transform:uppercase;font-weight:800}
+  .nav{display:flex;gap:6px}
+  .nav a{font-size:13px;font-weight:700;color:var(--dim);text-decoration:none;padding:7px 14px;border-radius:99px;border:1px solid transparent}
+  .nav a:hover{color:var(--ink);border-color:var(--line)}
+  .nav a.on{background:var(--ink);color:var(--hi)}
+  .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
+  .mock-tag.live{color:var(--signal);border-color:var(--signal)}
+
+  .main{margin-top:20px;padding-bottom:70px}
+  .intro{font-size:13px;color:var(--dim);margin-bottom:16px}
+  .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:1000px){.cols{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){.cols{grid-template-columns:1fr}}
+  .col{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;min-height:140px;display:flex;flex-direction:column}
+  .col-h{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+  .col-h .cnt{font-weight:700;color:var(--dim);font-size:12px}
+  .col.s관심 .col-h{color:var(--dim)}
+  .col.s소싱중 .col-h{color:#8a7523}
+  .col.s등록완료 .col-h{color:var(--signal)}
+  .col.s보류 .col-h{color:var(--warn)}
+  .drop{padding:10px;display:flex;flex-direction:column;gap:9px;flex:1}
+  .drop.over{background:rgba(31,92,61,.06);outline:2px dashed var(--signal);outline-offset:-6px;border-radius:12px}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:11px 12px;cursor:grab}
+  .card:active{cursor:grabbing}
+  .card.dragging{opacity:.4}
+  .card .kw{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px}
+  .type-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px}
+  .type-과일{background:#f3e0d6;color:var(--warn)}
+  .type-채소{background:var(--signal-soft);color:var(--signal)}
+  .type-기타{background:#e7e2d2;color:var(--dim)}
+  .card .metrics{font-size:11.5px;color:var(--dim);margin-top:5px;line-height:1.5}
+  .card .metrics b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .margin-pos{color:var(--signal);font-weight:800}
+  .margin-neg{color:var(--warn);font-weight:800}
+  .card .note{font-size:12px;margin-top:7px;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+  .card .acts{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .mini{font-size:10.5px;font-weight:700;border:1px solid var(--line);background:none;color:var(--dim);border-radius:6px;padding:2px 8px;cursor:pointer;text-decoration:none}
+  .mini:hover{border-color:var(--ink);color:var(--ink)}
+  .mini.warn:hover{border-color:var(--warn);color:var(--warn)}
+  .mini.cp{color:var(--signal);border-color:var(--signal)}
+  .mini.cp:hover{background:var(--signal);color:#fff}
+  .col-empty{font-size:12px;color:var(--dim);text-align:center;padding:18px 8px}
+
+  .add-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .add-bar input{flex:1;min-width:180px;padding:10px 13px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:var(--paper-2)}
+  .add-bar input:focus{outline:2px solid var(--signal);outline-offset:1px}
+  .add-bar button{background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:13px;padding:10px 18px;border-radius:9px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--signal);border-radius:99px;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:16px 0;text-align:center}
+
+  /* 게이트 */
+  .gate{position:fixed;inset:0;background:var(--paper);z-index:99;display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate.off{display:none}
+  .gate-box{width:100%;max-width:380px;background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:34px 28px}
+  .gate-box .brand{margin-bottom:18px;font-size:12px}
+  .gate-box h2{font-size:24px;font-weight:800;margin-bottom:6px}
+  .gate-box p{font-size:13px;color:var(--dim);margin-bottom:18px}
+  .gate-box input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--paper);color:var(--ink);letter-spacing:.2em}
+  .gate-box .run{width:100%;justify-content:center;margin-top:14px;background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:15px;padding:14px;border-radius:10px;display:inline-flex;align-items:center;gap:10px}
+  .gate-box .dot{width:8px;height:8px;background:var(--hi);border-radius:99px}
+  .gate-err{font-size:13px;color:var(--warn);font-weight:700;margin-top:12px;min-height:20px}
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="brand">위탁 스코어러 · Sourcing Console</div>
+    <h2>비밀번호 입력</h2>
+    <p>등록된 사용자만 이용할 수 있습니다.</p>
+    <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
+    <button class="run" id="gateBtn"><span class="dot"></span> 입장</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div class="brand">위탁 스코어러</div>
+        <nav class="nav">
+          <a href="./">대시보드</a>
+          <a href="seasonal.html">제철 레이더</a>
+          <a href="sourcing.html">소싱처</a>
+          <a href="board.html" class="on">운영 보드</a>
+        </nav>
+      </div>
+      <div id="mockTag" class="mock-tag">확인 중…</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <p class="intro">추진할 품목을 담아 <b>관심 → 소싱중 → 등록완료</b> 단계로 카드를 끌어 옮기며 관리합니다. 서버에 저장되어 PC·폰 어디서나 같은 보드가 보입니다.</p>
+    <div class="add-bar">
+      <input type="text" id="addInput" placeholder="품목명을 직접 담기 (예: 복숭아) — 제철 레이더에서 '보드에 담기'로도 추가됩니다">
+      <button id="addBtn">담기</button>
+    </div>
+    <div class="cols" id="cols"><div class="col-empty" style="grid-column:1/-1"><span class="spin"></span>불러오는 중…</div></div>
+  </div>
+  <div class="foot">스코어는 참고치입니다. 등록 전 셀러 강도·공급처 위탁가를 반드시 확인하세요.</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
+const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
+const STAGES = ['관심','소싱중','등록완료','보류'];
+const COUPANG_FEE = 0.108;
+
+function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
+function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
+function coupangUrl(kw){ return 'https://www.coupang.com/np/search?q='+encodeURIComponent(kw); }
+
+async function apiFetch(path, opt={}){
+  const res=await fetch(API+path,{...opt, headers:{'X-Gate-Key':gateKeyVal(), ...(opt.headers||{})}});
+  if(res.status===401){ localStorage.removeItem('gateKey'); $('#gate').classList.remove('off'); gateError('비밀번호를 다시 입력해 주세요.'); throw new Error('auth'); }
+  return res;
+}
+
+// ---- 게이트 ----
+async function verifyKey(key){ try{ const r=await fetch(API+'/api/verify',{headers:{'X-Gate-Key':key}}); return r.ok; }catch(e){ return null; } }
+function gateError(m){ $('#gateErr').textContent=m; }
+let booted=false;
+function openDashboard(){ $('#gate').classList.add('off'); if(!booted){ booted=true; boot(); } }
+async function submitGate(){
+  const pw=$('#gatePw').value, btn=$('#gateBtn'); btn.disabled=true;
+  const ok=await verifyKey(pw); btn.disabled=false;
+  if(ok){ localStorage.setItem('gateKey',pw); openDashboard(); }
+  else if(ok===null){ gateError('서버에 연결할 수 없습니다.'); }
+  else{ gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
+}
+$('#gateBtn').addEventListener('click',submitGate);
+$('#gatePw').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGate(); });
+(async()=>{ const ok=await verifyKey(gateKeyVal()); if(ok) openDashboard(); else{ if(ok===null) gateError('서버에 연결할 수 없습니다.'); $('#gatePw').focus(); } })();
+
+fetch(API+'/api/status').then(r=>r.json()).then(d=>{
+  const t=$('#mockTag');
+  if(d.mock_mode){ t.textContent='● 목업 데이터'; } else{ t.textContent='● 실데이터'; t.classList.add('live'); }
+}).catch(()=>{ $('#mockTag').textContent='● 서버 연결 실패'; });
+
+// ---- 보드 데이터 ----
+let items=[];
+async function load(){
+  try{
+    const res=await apiFetch('/api/board');
+    const d=await res.json();
+    items=d.items||[];
+    render();
+  }catch(e){ if(e.message!=='auth') $('#cols').innerHTML=`<div class="col-empty" style="grid-column:1/-1">불러오기 실패: ${e.message}</div>`; }
+}
+async function upsert(item){
+  const res=await apiFetch('/api/board',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+  return res.json();
+}
+async function removeItem(kw){
+  await apiFetch('/api/board?keyword='+encodeURIComponent(kw),{method:'DELETE'});
+}
+
+function marginOf(m){
+  if(!m) return null;
+  const sell=m.coupang_price, supply=m.supply_price??m.wholesale;
+  if(sell&&supply) return Math.round((sell*(1-COUPANG_FEE)-supply)/sell*1000)/10;
+  return null;
+}
+
+function cardHtml(it){
+  const m=it.meta||{};
+  const mg=marginOf(m);
+  const parts=[];
+  if(m.search_volume!=null) parts.push(`검색 <b>${fmt(m.search_volume)}</b>`);
+  if(m.trend_slope!=null) parts.push(m.trend_slope>=0.25?'트렌드 <b style="color:var(--signal)">▲</b>':(m.trend_slope<=-0.15?'트렌드 <b style="color:var(--warn)">▼</b>':'트렌드 –'));
+  if(m.coupang_price) parts.push(`쿠팡 <b>${fmt(m.coupang_price)}</b>`);
+  if(m.wholesale) parts.push(`도매 <b>${fmt(m.wholesale)}</b>`);
+  const mgTxt=mg!=null?`<div class="metrics">마진 <span class="${mg<0?'margin-neg':'margin-pos'}">${mg}%</span></div>`:'';
+  const type=it.type||'기타';
+  return `<div class="card" draggable="true" data-kw="${encodeURIComponent(it.keyword)}">
+    <div class="kw">${it.keyword}<span class="type-badge type-${type}">${type}</span></div>
+    ${parts.length?`<div class="metrics">${parts.join(' · ')}</div>`:''}
+    ${mgTxt}
+    <div class="note" data-note>${it.note?it.note:'<span style="color:var(--dim)">메모 추가하려면 클릭</span>'}</div>
+    <div class="acts">
+      <a class="mini cp" href="${coupangUrl(it.keyword)}" target="_blank" rel="noopener">쿠팡↗</a>
+      <a class="mini" href="sourcing.html?item=${encodeURIComponent(it.keyword)}">소싱처</a>
+      <button class="mini warn" data-del>삭제</button>
+    </div>
+  </div>`;
+}
+
+function render(){
+  $('#cols').innerHTML=STAGES.map(st=>{
+    const list=items.filter(i=>i.stage===st);
+    const cards=list.length?list.map(cardHtml).join(''):'<div class="col-empty">비어 있음</div>';
+    return `<div class="col s${st}">
+      <div class="col-h">${st}<span class="cnt">${list.length}</span></div>
+      <div class="drop" data-stage="${st}">${cards}</div>
+    </div>`;
+  }).join('');
+  wire();
+}
+
+function itemOf(kw){ return items.find(i=>i.keyword===kw); }
+
+function wire(){
+  // 드래그 앤 드롭으로 단계 이동
+  document.querySelectorAll('.card').forEach(c=>{
+    c.addEventListener('dragstart',e=>{ c.classList.add('dragging'); e.dataTransfer.setData('text/plain',c.dataset.kw); });
+    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+  });
+  document.querySelectorAll('.drop').forEach(d=>{
+    d.addEventListener('dragover',e=>{ e.preventDefault(); d.classList.add('over'); });
+    d.addEventListener('dragleave',()=>d.classList.remove('over'));
+    d.addEventListener('drop',async e=>{
+      e.preventDefault(); d.classList.remove('over');
+      const kw=decodeURIComponent(e.dataTransfer.getData('text/plain'));
+      const it=itemOf(kw); const st=d.dataset.stage;
+      if(it && it.stage!==st){ it.stage=st; render(); await upsert(it); }
+    });
+  });
+  // 삭제
+  document.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const kw=decodeURIComponent(b.closest('.card').dataset.kw);
+      if(!confirm(`"${kw}"를 보드에서 삭제할까요?`)) return;
+      items=items.filter(i=>i.keyword!==kw); render();
+      await removeItem(kw);
+    });
+  });
+  // 메모 인라인 편집
+  document.querySelectorAll('[data-note]').forEach(n=>{
+    n.addEventListener('click',async e=>{
+      const card=n.closest('.card'); const kw=decodeURIComponent(card.dataset.kw);
+      const it=itemOf(kw);
+      const val=prompt(`"${kw}" 메모 (소싱 진행·공급가·연락처 등):`, it.note||'');
+      if(val===null) return;
+      it.note=val; render(); await upsert(it);
+    });
+  });
+}
+
+// ---- 직접 담기 ----
+async function addKeyword(kw){
+  kw=(kw||'').trim(); if(!kw) return;
+  if(itemOf(kw)){ alert('이미 보드에 있습니다.'); return; }
+  const it={keyword:kw, type:'기타', stage:'관심', note:'', meta:{}};
+  items.unshift(it); render();
+  await upsert(it);
+}
+$('#addBtn').addEventListener('click',()=>{ addKeyword($('#addInput').value); $('#addInput').value=''; });
+$('#addInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ addKeyword($('#addInput').value); $('#addInput').value=''; } });
+
+function boot(){
+  // 다른 페이지에서 넘어온 담기 요청 (?add=품목&type=&meta=base64json)
+  const sp=new URLSearchParams(location.search);
+  const add=sp.get('add');
+  load().then(async ()=>{
+    if(add){
+      if(!itemOf(add)){
+        let meta={}; try{ meta=JSON.parse(decodeURIComponent(escape(atob(sp.get('meta')||'')))); }catch(e){}
+        const it={keyword:add, type:sp.get('type')||'기타', stage:'관심', note:'', meta};
+        items.unshift(it); render(); await upsert(it);
+      }
+      history.replaceState(null,'',location.pathname);
+    }
+  });
+}
+</script>
+</body>
+</html>
