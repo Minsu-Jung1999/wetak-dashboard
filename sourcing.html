@@ -92,6 +92,7 @@
   </div>
 </div>
 
+<script>try{if(localStorage.getItem('gateKey'))document.getElementById('gate').classList.add('off')}catch(e){}</script>
 <div class="wrap">
   <header>
     <div class="brandline">
@@ -213,15 +214,15 @@ document.addEventListener('change', e=>{
 // ---- 검색 ----
 function cacheGet(item){
   try{
-    const s=JSON.parse(localStorage.getItem('wetak-suppliers-v1'))||{};
+    const s=JSON.parse(localStorage.getItem('wetak-suppliers-v2'))||{};
     const e=s[item];
     return (e && e.date===todayStr()) ? e.data : null;
   }catch(err){ return null; }
 }
 function cacheSet(item, data){
-  let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-suppliers-v1'))||{}; }catch(e){}
+  let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-suppliers-v2'))||{}; }catch(e){}
   s[item]={date:todayStr(), data};
-  try{ localStorage.setItem('wetak-suppliers-v1', JSON.stringify(s)); }catch(e){}
+  try{ localStorage.setItem('wetak-suppliers-v2', JSON.stringify(s)); }catch(e){}
 }
 
 async function search(item, force=false){
