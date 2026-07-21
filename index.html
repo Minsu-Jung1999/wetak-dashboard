@@ -104,6 +104,31 @@
   .empty{color:var(--dim);text-align:center;padding:60px 0;font-size:14px}
   .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:18px 0;text-align:center}
 
+  /* CSV 버튼 */
+  .csv-btn{
+    background:none;border:1px solid var(--ink);color:var(--ink);cursor:pointer;
+    font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;letter-spacing:.04em;
+  }
+  .csv-btn:hover{background:var(--ink);color:var(--hi)}
+  .csv-btn:disabled{opacity:.35;cursor:default}
+  .csv-btn:disabled:hover{background:none;color:var(--ink)}
+
+  /* 2차 검증 체크리스트 */
+  .row.clickable{cursor:pointer}
+  .row.clickable:hover{background:var(--paper-2)}
+  .chk-badge{font-size:11px;font-weight:700;color:var(--signal)}
+  .chk-panel{
+    border-bottom:1px solid var(--line);background:var(--paper-2);
+    padding:16px 20px 18px 60px;font-size:13px;
+  }
+  .chk-panel h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+  .chk-item{display:flex;gap:9px;align-items:center;padding:4px 0;cursor:pointer}
+  .chk-item input{accent-color:var(--signal);width:15px;height:15px}
+  .chk-item.done{color:var(--dim);text-decoration:line-through}
+  .chk-memo{margin-top:12px}
+  .chk-memo label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;display:block;margin-bottom:5px}
+  .chk-memo textarea{min-height:52px;font-size:12px}
+
   /* 로그인 게이트 */
   .gate{position:fixed;inset:0;background:var(--paper);z-index:99;display:flex;align-items:center;justify-content:center;padding:24px}
   .gate.off{display:none}
@@ -169,7 +194,10 @@
   <div class="results">
     <div class="res-h">
       <h2>③ 등록 후보 랭킹</h2>
-      <span id="resMeta"></span>
+      <div style="display:flex;gap:14px;align-items:baseline">
+        <span id="resMeta"></span>
+        <button class="csv-btn" id="csvBtn" disabled>CSV 다운로드</button>
+      </div>
     </div>
     <div id="resBody">
       <div class="empty">아직 결과가 없습니다. 키워드를 넣고 실행하세요.</div>
@@ -304,7 +332,30 @@ $('#runBtn').addEventListener('click', async ()=>{
   }
 });
 
+// ---- 2차 검증 체크리스트 (localStorage 저장) ----
+const CHK_ITEMS=[
+  '네이버쇼핑 1페이지 셀러 강도 확인 (대형셀러·최저가 경쟁 여부)',
+  '공급처에서 실제 위탁 가능 여부·공급가 대조',
+  '배송비·배송기간 확인',
+  '시즌·재고 리스크 확인',
+  '스토어 등록 완료',
+];
+function chkLoad(){ try{ return JSON.parse(localStorage.getItem('wetak-checks'))||{}; }catch(e){ return {}; } }
+function chkSave(s){ localStorage.setItem('wetak-checks', JSON.stringify(s)); }
+function chkOf(kw){ const s=chkLoad(); return s[kw]||{c:[false,false,false,false,false],m:''}; }
+function chkCount(kw){ return chkOf(kw).c.filter(Boolean).length; }
+
+function rowVerdict(r){
+  let [vtxt,vcls]=verdict(r.total_score,r.competition);
+  if(r.supply && r.supply.matched===0){ vtxt='위탁불가'; vcls='v-skip'; }
+  return [vtxt,vcls];
+}
+
+let lastData=null;
+
 function render(data){
+  lastData=data;
+  $('#csvBtn').disabled=!data.results.length;
   let meta=`${data.count}개 · ${data.mock?'목업':'실데이터'}`;
   if(data.supply_mode) meta+=` · 공급처 ${data.supply_mode==='live'?'실데이터':data.supply_mode==='mock'?'목업':'조회 실패'}`;
   $('#resMeta').textContent=meta;
@@ -316,17 +367,18 @@ function render(data){
     <div class="col-hide">마진</div>
     <div class="score-cell">점수</div></div>`;
   data.results.forEach((r,i)=>{
-    let [vtxt,vcls]=verdict(r.total_score,r.competition);
-    if(r.supply && r.supply.matched===0){ vtxt='위탁불가'; vcls='v-skip'; }
+    const [vtxt,vcls]=rowVerdict(r);
     const marginTxt=r.margin_rate!=null?`${r.margin_rate}%${r.supply&&r.supply.applied?'<span class="via">*</span>':''}`:'—';
     let viaTxt=r.via?` · <span class="via">연관 ← ${r.via}</span>`:'';
     if(r.supply&&r.supply.matched>0){
       viaTxt+=` · 공급 ${r.supply.matched}건`;
       if(r.supply.min_price) viaTxt+=` · 최저 ${fmt(r.supply.min_price)}원`;
     }
-    html+=`<div class="row">
+    const done=chkCount(r.keyword);
+    const badge=done?` · <span class="chk-badge">검증 ${done}/${CHK_ITEMS.length}</span>`:'';
+    html+=`<div class="row clickable" data-i="${i}" title="클릭하면 2차 검증 체크리스트가 열립니다">
       <div class="rank ${i===0?'top':''}">${i+1}</div>
-      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}${viaTxt}</span></div>
+      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}${viaTxt}${badge}</span></div>
       <div class="num col-hide">${fmt(r.search_volume)}</div>
       <div class="col-hide"><span class="comp-badge comp-${r.competition}">${r.competition}</span></div>
       <div class="num col-hide">${marginTxt}</div>
@@ -339,6 +391,69 @@ function render(data){
   });
   $('#resBody').innerHTML=html;
 }
+
+// 행 클릭 → 체크리스트 패널 토글
+$('#resBody').addEventListener('click', e=>{
+  const row=e.target.closest('.row.clickable');
+  if(!row || e.target.closest('.chk-panel')) return;
+  const next=row.nextElementSibling;
+  if(next && next.classList.contains('chk-panel')){ next.remove(); return; }
+  document.querySelectorAll('.chk-panel').forEach(p=>p.remove());
+  const r=lastData.results[+row.dataset.i];
+  const st=chkOf(r.keyword);
+  const panel=document.createElement('div');
+  panel.className='chk-panel';
+  panel.innerHTML=`<h3>2차 검증 — ${r.keyword}</h3>`+
+    CHK_ITEMS.map((t,j)=>`<label class="chk-item ${st.c[j]?'done':''}"><input type="checkbox" data-j="${j}" ${st.c[j]?'checked':''}> ${t}</label>`).join('')+
+    `<div class="chk-memo"><label>실판매 기록 (판매량·전환 메모 — 가중치 튜닝 재료)</label>
+     <textarea placeholder="예) 7/25 등록, 첫 주 노출 120·클릭 9·판매 2">${st.m||''}</textarea></div>`;
+  panel.addEventListener('change', ev=>{
+    const s=chkLoad(); const cur=s[r.keyword]||{c:[false,false,false,false,false],m:''};
+    if(ev.target.matches('input[type=checkbox]')){
+      cur.c[+ev.target.dataset.j]=ev.target.checked;
+      ev.target.closest('.chk-item').classList.toggle('done', ev.target.checked);
+    }
+    cur.m=panel.querySelector('textarea').value;
+    s[r.keyword]=cur; chkSave(s);
+    const badgeDone=cur.c.filter(Boolean).length;
+    const metaEl=row.querySelector('.meta');
+    let b=metaEl.querySelector('.chk-badge');
+    if(badgeDone){
+      if(!b){ metaEl.insertAdjacentHTML('beforeend',' · <span class="chk-badge"></span>'); b=metaEl.querySelector('.chk-badge'); }
+      b.textContent=`검증 ${badgeDone}/${CHK_ITEMS.length}`;
+    }
+  });
+  panel.querySelector('textarea').addEventListener('input', ()=>{
+    const s=chkLoad(); const cur=s[r.keyword]||{c:[false,false,false,false,false],m:''};
+    cur.m=panel.querySelector('textarea').value; s[r.keyword]=cur; chkSave(s);
+  });
+  row.after(panel);
+});
+
+// ---- CSV 익스포트 ----
+function csvCell(v){ return `"${String(v??'').replace(/"/g,'""')}"`; }
+$('#csvBtn').addEventListener('click', ()=>{
+  if(!lastData||!lastData.results.length) return;
+  const head=['순위','키워드','연관출처','월검색량','PC','모바일','경쟁','마진%','마진자동','공급매칭','최저공급가','점수_검색량','점수_경쟁','점수_마진','점수_트렌드','총점','판정','검증진행','실판매메모'];
+  const rows=lastData.results.map((r,i)=>{
+    const [vtxt]=rowVerdict(r);
+    const st=chkOf(r.keyword);
+    return [
+      i+1, r.keyword, r.via||'', r.search_volume, r.pc, r.mobile, r.competition,
+      r.margin_rate??'', r.supply&&r.supply.applied?'Y':'', r.supply?r.supply.matched:'',
+      r.supply&&r.supply.min_price?r.supply.min_price:'',
+      r.scores.volume, r.scores.competition, r.scores.margin??'', r.scores.trend,
+      r.total_score, vtxt, `${st.c.filter(Boolean).length}/${CHK_ITEMS.length}`, st.m||'',
+    ].map(csvCell).join(',');
+  });
+  const csv='﻿'+head.map(csvCell).join(',')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const d=new Date(), pad=n=>String(n).padStart(2,'0');
+  a.download=`위탁스코어러_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 </script>
 </body>
 </html>
