@@ -293,11 +293,11 @@ function render(d){
 $('#searchBtn').addEventListener('click',()=>search($('#itemInput').value, true));
 $('#itemInput').addEventListener('keydown',e=>{ if(e.key==='Enter') search($('#itemInput').value, true); });
 $('#chips').innerHTML=QUICK_ITEMS.map(c=>`<button class="chip" data-c="${c}">${c}</button>`).join('');
-$('#chips').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) search(b.dataset.c); });
+$('#chips').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) search(b.dataset.c, true); });
 
 function boot(){
   const item=new URLSearchParams(location.search).get('item');
-  if(item) search(item);
+  if(item) search(item, true);
 }
 </script>
 </body>
