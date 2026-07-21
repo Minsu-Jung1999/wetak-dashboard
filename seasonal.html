@@ -121,7 +121,10 @@
   <div class="main">
     <div class="sec-h">
       <h2>지금 제철 — <em id="curMonth"></em>월</h2>
-      <span class="sub">행 클릭 = 마진 계산기 · <a id="bmk" href="#" style="color:var(--signal);font-weight:700" title="이 링크를 브라우저 북마크바로 드래그해 두고, 쿠팡 검색 결과에서 누르면 최저가가 자동 입력됩니다">📌 가격 캡처 북마클릿 (북마크바로 드래그)</a></span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="act-btn" id="pasteBtn" title="tools/coupang_prices.py로 수집한 JSON을 붙여넣어 쿠팡 최저가를 일괄 반영">쿠팡가 붙여넣기</button>
+        <a id="bmk" href="#" style="color:var(--signal);font-weight:700;font-size:12px" title="이 링크를 북마크바로 드래그해 두고 쿠팡 검색 결과에서 누르면 최저가가 자동 입력됩니다">📌 북마클릿</a>
+      </div>
     </div>
     <div class="card"><div id="curBody"><div class="empty"><span class="spin"></span>불러오는 중…</div></div></div>
 
@@ -205,6 +208,24 @@ async function loadSeasonal(force=false){
   }
 }
 $('#reloadBtn').addEventListener('click',()=>loadSeasonal(true));
+
+// 로컬 수집기(tools/coupang_prices.py)가 만든 JSON 붙여넣기 → 최저가 일괄 반영
+$('#pasteBtn').addEventListener('click',async ()=>{
+  let txt='';
+  try{ txt=await navigator.clipboard.readText(); }catch(e){}
+  txt=prompt('coupang_prices.py 결과 JSON을 붙여넣으세요:', txt||'');
+  if(!txt) return;
+  try{
+    const d=JSON.parse(txt);
+    const prices=d.prices||d;
+    let n=0;
+    for(const [name,val] of Object.entries(prices)){
+      if(val){ priceSet(name,{auto:Number(val)}); n++; }
+    }
+    renderAll();
+    alert(`${n}개 품목의 쿠팡 최저가를 반영했습니다.`);
+  }catch(e){ alert('JSON 형식이 올바르지 않습니다: '+e.message); }
+});
 
 // 쿠팡 최저가: 일 1회, 순차 시도. 차단되면 즉시 중단 → 수동 입력만
 let coupangBlocked=false;
