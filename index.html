@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>위탁 스코어러 · 키워드 발굴 콘솔</title>
+<title>위탁 스코어러 · 소싱 콘솔</title>
 <style>
   :root{
     --ink:#12130f;
@@ -22,125 +22,123 @@
     background:var(--paper);color:var(--ink);
     -webkit-font-smoothing:antialiased;line-height:1.5;
   }
-  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  button{font-family:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 
   /* Header */
-  header{border-bottom:2px solid var(--ink);padding:26px 0 20px;margin-bottom:0}
-  .brandline{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px}
-  .brand{font-size:12px;letter-spacing:.32em;text-transform:uppercase;font-weight:700}
+  header{border-bottom:2px solid var(--ink);padding:18px 0}
+  .brandline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{font-size:13px;letter-spacing:.32em;text-transform:uppercase;font-weight:800}
   .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
   .mock-tag.live{color:var(--signal);border-color:var(--signal)}
-  h1{font-size:clamp(30px,5vw,54px);font-weight:800;letter-spacing:-.02em;line-height:1.02;margin-top:14px}
-  h1 em{font-style:normal;color:var(--warn)}
-  .sub{color:var(--dim);font-size:14px;margin-top:8px;max-width:60ch}
 
-  /* Input panel */
-  .panel{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:26px}
-  .panel-h{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;font-weight:700}
-  textarea{
-    width:100%;min-height:120px;resize:vertical;padding:14px;border:1px solid var(--line);
-    border-radius:10px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:13px;
-    background:var(--paper);color:var(--ink);line-height:1.7;
+  /* Layout */
+  .layout{display:grid;grid-template-columns:1fr 292px;gap:24px;margin-top:22px;padding-bottom:70px}
+  @media(max-width:920px){.layout{grid-template-columns:1fr}}
+
+  /* Category chips */
+  .cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .cat{
+    background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;
+    font-weight:700;font-size:13px;padding:8px 16px;border-radius:99px;transition:all .12s;
   }
-  textarea:focus{outline:2px solid var(--signal);outline-offset:1px}
-  .hint{font-size:12px;color:var(--dim);margin-top:8px}
-  .hint code{background:var(--paper);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
-  .expand-opt{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;cursor:pointer;color:var(--ink)}
-  .expand-opt input{accent-color:var(--signal);width:15px;height:15px}
+  .cat:hover{border-color:var(--ink);color:var(--ink)}
+  .cat.on{background:var(--ink);color:var(--hi);border-color:var(--ink)}
 
-  .tabs{display:flex;gap:8px;margin-bottom:16px}
-  .tab{background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px}
-  .tab.on{background:var(--ink);color:var(--hi);border-color:var(--ink)}
-  .selrow{display:flex;gap:10px;flex-wrap:wrap}
-  .selrow select{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px}
-  .selrow select:focus{outline:2px solid var(--signal);outline-offset:1px}
-
-  .weights{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px}
-  @media(max-width:640px){.weights{grid-template-columns:repeat(2,1fr)}}
-  .wgt label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:6px;font-weight:700}
-  .wgt input[type=range]{width:100%;accent-color:var(--signal)}
-  .wgt .val{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
-  .wsum{font-size:12px;color:var(--dim);margin-top:12px}
-  .wsum.bad{color:var(--warn);font-weight:700}
-
-  .run{
-    margin-top:22px;background:var(--ink);color:var(--hi);border:none;cursor:pointer;
-    font-weight:800;font-size:15px;letter-spacing:.02em;padding:15px 30px;border-radius:10px;
-    display:inline-flex;align-items:center;gap:10px;transition:transform .08s;
+  /* Card */
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .card-h .t{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
+  .card-h .sub{font-size:12px;color:var(--dim)}
+  .card-actions{display:flex;gap:8px}
+  .act-btn{
+    background:none;border:1px solid var(--ink);color:var(--ink);cursor:pointer;
+    font-size:12px;font-weight:700;padding:6px 13px;border-radius:8px;letter-spacing:.03em;
   }
-  .run:hover{transform:translateY(-1px)}
-  .run:active{transform:translateY(0)}
-  .run:disabled{opacity:.5;cursor:wait}
-  .run .dot{width:8px;height:8px;background:var(--hi);border-radius:99px}
+  .act-btn:hover{background:var(--ink);color:var(--hi)}
+  .act-btn:disabled{opacity:.35;cursor:default}
+  .act-btn:disabled:hover{background:none;color:var(--ink)}
 
-  /* Results */
-  .results{margin-top:34px;padding-bottom:80px}
-  .res-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:4px}
-  .res-h h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase}
-  .res-h span{font-size:13px;color:var(--dim)}
-
+  /* Table */
   .row{
-    display:grid;grid-template-columns:44px 1fr 130px 96px 120px 100px;gap:16px;align-items:center;
-    padding:16px 8px;border-bottom:1px solid var(--line);
+    display:grid;grid-template-columns:42px 1fr 104px 72px 64px 92px;gap:12px;align-items:center;
+    padding:13px 16px;border-bottom:1px solid var(--line);
   }
-  .row.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:2px solid var(--ink)}
+  .row:last-of-type{border-bottom:none}
+  .row.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:2px solid var(--ink);padding-top:11px;padding-bottom:11px}
   @media(max-width:760px){
-    .row{grid-template-columns:36px 1fr 90px;grid-auto-rows:auto}
+    .row{grid-template-columns:34px 1fr 84px}
     .row .col-hide{display:none}
   }
-  .rank{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--dim)}
+  .row.clickable{cursor:pointer}
+  .row.clickable:hover{background:rgba(18,19,15,.04)}
+  .rank{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--dim)}
   .rank.top{color:var(--signal)}
-  .kw{font-weight:700;font-size:16px}
-  .kw .meta{display:block;font-size:12px;color:var(--dim);font-weight:400;margin-top:2px}
+  .kw{font-weight:700;font-size:15px}
+  .kw .meta{display:block;font-size:11.5px;color:var(--dim);font-weight:400;margin-top:1px}
   .kw .via{color:var(--signal);font-weight:700}
-  .num{font-variant-numeric:tabular-nums}
-  .comp-badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;display:inline-block}
+  .num{font-variant-numeric:tabular-nums;font-size:14px}
+  .comp-badge{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block}
   .comp-낮음{background:var(--signal-soft);color:var(--signal)}
   .comp-중간{background:#f0e9d6;color:#8a7523}
   .comp-높음{background:#f3e0d6;color:var(--warn)}
+  .tr-up{color:var(--signal);font-weight:800}
+  .tr-dn{color:var(--warn);font-weight:800}
+  .tr-fl{color:var(--dim)}
 
   .score-cell{text-align:right}
-  .score-num{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-  .score-bar{height:4px;background:var(--paper-2);border-radius:99px;margin-top:6px;overflow:hidden}
-  .score-bar i{display:block;height:100%;background:var(--signal)}
-  .verdict{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+  .score-num{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .verdict{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:3px}
   .v-pass{color:var(--signal)}
   .v-hold{color:#8a7523}
   .v-skip{color:var(--warn)}
+  .chk-badge{font-size:11px;font-weight:700;color:var(--signal)}
 
-  .empty{color:var(--dim);text-align:center;padding:60px 0;font-size:14px}
-  .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:18px 0;text-align:center}
-
-  /* CSV 버튼 */
-  .csv-btn{
-    background:none;border:1px solid var(--ink);color:var(--ink);cursor:pointer;
-    font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;letter-spacing:.04em;
+  /* Pagination */
+  .pager{display:flex;gap:6px;justify-content:center;align-items:center;padding:14px;border-top:1px solid var(--line)}
+  .pg{
+    background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;
+    font-weight:700;font-size:13px;min-width:34px;padding:6px 10px;border-radius:8px;
   }
-  .csv-btn:hover{background:var(--ink);color:var(--hi)}
-  .csv-btn:disabled{opacity:.35;cursor:default}
-  .csv-btn:disabled:hover{background:none;color:var(--ink)}
+  .pg:hover{border-color:var(--ink);color:var(--ink)}
+  .pg.on{background:var(--ink);color:var(--hi);border-color:var(--ink)}
+  .pg:disabled{opacity:.3;cursor:default}
+
+  .empty{color:var(--dim);text-align:center;padding:56px 20px;font-size:14px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--signal);border-radius:99px;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* Trending aside */
+  .aside .card{position:sticky;top:16px}
+  .trend-list{list-style:none}
+  .trend-item{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .trend-item:last-child{border-bottom:none}
+  .t-rank{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--dim);width:20px;text-align:center}
+  .trend-item:nth-child(-n+3) .t-rank{color:var(--warn)}
+  .t-kw{font-weight:700;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .t-vol{font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+  .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:16px 0;text-align:center}
 
   /* 2차 검증 체크리스트 */
-  .row.clickable{cursor:pointer}
-  .row.clickable:hover{background:var(--paper-2)}
-  .chk-badge{font-size:11px;font-weight:700;color:var(--signal)}
-  .chk-panel{
-    border-bottom:1px solid var(--line);background:var(--paper-2);
-    padding:16px 20px 18px 60px;font-size:13px;
-  }
-  .chk-panel h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
-  .chk-item{display:flex;gap:9px;align-items:center;padding:4px 0;cursor:pointer}
+  .chk-panel{border-bottom:1px solid var(--line);background:rgba(18,19,15,.03);padding:14px 18px 16px 56px;font-size:13px}
+  .chk-panel h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .chk-item{display:flex;gap:9px;align-items:center;padding:3px 0;cursor:pointer}
   .chk-item input{accent-color:var(--signal);width:15px;height:15px}
   .chk-item.done{color:var(--dim);text-decoration:line-through}
-  .chk-memo{margin-top:12px}
-  .chk-memo label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;display:block;margin-bottom:5px}
-  .chk-memo textarea{min-height:52px;font-size:12px}
+  .chk-memo{margin-top:10px}
+  .chk-memo label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;display:block;margin-bottom:4px}
+  .chk-memo textarea{
+    width:100%;min-height:48px;resize:vertical;padding:10px;border:1px solid var(--line);
+    border-radius:8px;font-size:12px;background:var(--paper);color:var(--ink);font-family:inherit;
+  }
+  .chk-memo textarea:focus{outline:2px solid var(--signal);outline-offset:1px}
 
   /* 로그인 게이트 */
   .gate{position:fixed;inset:0;background:var(--paper);z-index:99;display:flex;align-items:center;justify-content:center;padding:24px}
   .gate.off{display:none}
   .gate-box{width:100%;max-width:380px;background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:34px 28px}
-  .gate-box .brand{margin-bottom:18px}
+  .gate-box .brand{margin-bottom:18px;font-size:12px}
   .gate-box h2{font-size:24px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
   .gate-box p{font-size:13px;color:var(--dim);margin-bottom:18px}
   .gate-box input{
@@ -148,7 +146,13 @@
     font-size:16px;background:var(--paper);color:var(--ink);letter-spacing:.2em;
   }
   .gate-box input:focus{outline:2px solid var(--signal);outline-offset:1px}
-  .gate-box .run{width:100%;justify-content:center;margin-top:14px}
+  .gate-box .run{
+    width:100%;justify-content:center;margin-top:14px;background:var(--ink);color:var(--hi);
+    border:none;cursor:pointer;font-weight:800;font-size:15px;padding:14px;border-radius:10px;
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .gate-box .run:disabled{opacity:.5}
+  .gate-box .dot{width:8px;height:8px;background:var(--hi);border-radius:99px}
   .gate-err{font-size:13px;color:var(--warn);font-weight:700;margin-top:12px;min-height:20px}
 </style>
 </head>
@@ -157,240 +161,158 @@
   <div class="gate-box">
     <div class="brand">위탁 스코어러 · Sourcing Console</div>
     <h2>비밀번호 입력</h2>
-    <p>등록된 사용자만 스코어링을 실행할 수 있습니다.</p>
+    <p>등록된 사용자만 이용할 수 있습니다.</p>
     <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
     <button class="run" id="gateBtn"><span class="dot"></span> 입장</button>
     <div class="gate-err" id="gateErr"></div>
   </div>
 </div>
+
 <div class="wrap">
   <header>
     <div class="brandline">
       <div class="brand">위탁 스코어러 · Sourcing Console</div>
       <div id="mockTag" class="mock-tag">데이터 소스 확인 중…</div>
     </div>
-    <h1>팔릴 걸 <em>먼저</em> 고른다.</h1>
-    <p class="sub">키워드를 넣으면 검색량·경쟁도·마진·트렌드를 하나의 점수로 압축합니다. 감이 아니라 숫자로 등록 후보를 거릅니다.</p>
   </header>
 
-  <div class="panel">
-    <div class="panel-h">① 후보 키워드</div>
-    <div class="tabs">
-      <button class="tab on" id="tabAuto" type="button">자동 발굴</button>
-      <button class="tab" id="tabManual" type="button">직접 입력</button>
-    </div>
-
-    <div id="autoPane">
-      <div class="selrow">
-        <select id="catSel"></select>
-        <select id="cntSel">
-          <option value="20">후보 20개</option>
-          <option value="30" selected>후보 30개</option>
-          <option value="50">후보 50개</option>
-        </select>
-      </div>
-      <div class="hint">카테고리만 고르면 네이버 연관 키워드 수백 개를 스캔해 <b>"수요 있음 + 경쟁 높음 제외"</b> 후보를 자동 선별하고, 상위 후보는 트렌드까지 계산합니다.</div>
-    </div>
-
-    <div id="manualPane" style="display:none">
-      <textarea id="kwInput" placeholder="한 줄에 하나씩 입력하세요.
-공급가·판매가를 함께 넣으면 마진까지 계산합니다 (쉼표 구분).
-
-예)
-무선 안마기
-캠핑 폴딩박스, 8500, 19900
-강아지 자동급식기, 22000, 45000"></textarea>
-      <div class="hint">형식: <code>키워드</code> 또는 <code>키워드, 공급가, 판매가</code> — 가격을 넣으면 마진 점수가 반영됩니다.</div>
-      <label class="expand-opt"><input type="checkbox" id="expand"> 연관 키워드 자동 확장 — 네이버 연관검색어를 키워드당 최대 20개까지 함께 스코어링</label>
-      <label class="expand-opt"><input type="checkbox" id="supplyChk"> 공급처 매칭 (도매매) — 위탁 가능 여부·최저 공급가 조회, 판매가만 입력 시 마진 자동 계산</label>
-    </div>
-
-    <div class="panel-h" style="margin-top:24px">② 가중치 조정</div>
-    <div class="weights">
-      <div class="wgt"><label>경쟁도 <span class="val" id="lc">35</span></label><input type="range" id="wc" min="0" max="60" value="35"></div>
-      <div class="wgt"><label>마진 <span class="val" id="lm">30</span></label><input type="range" id="wm" min="0" max="60" value="30"></div>
-      <div class="wgt"><label>검색량 <span class="val" id="lv">20</span></label><input type="range" id="wv" min="0" max="60" value="20"></div>
-      <div class="wgt"><label>트렌드 <span class="val" id="lt">15</span></label><input type="range" id="wt" min="0" max="60" value="15"></div>
-    </div>
-    <div class="wsum" id="wsum">합계 100%</div>
-
-    <button class="run" id="runBtn"><span class="dot"></span> 자동 발굴 실행</button>
-  </div>
-
-  <div class="results">
-    <div class="res-h">
-      <h2>③ 등록 후보 랭킹</h2>
-      <div style="display:flex;gap:14px;align-items:baseline">
-        <span id="resMeta"></span>
-        <button class="csv-btn" id="csvBtn" disabled>CSV 다운로드</button>
+  <div class="layout">
+    <div class="main">
+      <div class="cats" id="cats"></div>
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="t" id="catTitle">등록 후보 랭킹</div>
+            <div class="sub" id="catSub"></div>
+          </div>
+          <div class="card-actions">
+            <button class="act-btn" id="csvBtn" disabled>CSV</button>
+            <button class="act-btn" id="reloadBtn">새로 조회</button>
+          </div>
+        </div>
+        <div id="tblBody"><div class="empty">불러오는 중…</div></div>
+        <div class="pager" id="pager" style="display:none"></div>
       </div>
     </div>
-    <div id="resBody">
-      <div class="empty">아직 결과가 없습니다. 키워드를 넣고 실행하세요.</div>
+
+    <div class="aside">
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="t">오늘의 인기 검색어</div>
+            <div class="sub" id="trendSub">카테고리 전체 · 하루 1회 갱신</div>
+          </div>
+        </div>
+        <ol class="trend-list" id="trendList">
+          <div class="empty" style="padding:32px 16px">불러오는 중…</div>
+        </ol>
+      </div>
     </div>
   </div>
 
-  <div class="foot">점수는 상대 판단용 참고치입니다. 상위 후보는 반드시 실제 공급처 위탁가·재고를 대조한 뒤 등록하세요. (마진의 * 표시 = 도매매 최저 공급가 자동 반영)</div>
+  <div class="foot">점수는 상대 판단용 참고치입니다. 행을 클릭하면 2차 검증 체크리스트가 열립니다 — 등록 전 반드시 셀러 강도·공급처 위탁가를 확인하세요.</div>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-// API 자동 감지: 로컬 FastAPI(uvicorn)로 서빙 중이면 same-origin,
-// 그 외(GitHub Pages, 파일 더블클릭)는 Supabase에 배포된 API를 호출한다.
+// API 자동 감지: 로컬 FastAPI(uvicorn)면 same-origin, 그 외는 배포된 Supabase API
 const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
 const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
-const sliders = ['wc','wm','wv','wt'];
-const labels = {wc:'lc',wm:'lm',wv:'lv',wt:'lt'};
+const PAGE_SIZE = 10;
+const FETCH_LIMIT = 50; // 카테고리당 조회 후보 수 (5페이지)
+const FALLBACK_CATS = ['캠핑/아웃도어','주방','반려동물','유아/키즈','차량용품','생활/수납','디지털 소품','뷰티/헬스'];
 
-function syncWeights(){
-  let sum=0;
-  sliders.forEach(id=>{const v=+$('#'+id).value; $('#'+labels[id]).textContent=v; sum+=v;});
-  const el=$('#wsum');
-  el.textContent=`합계 ${sum}%`;
-  el.classList.toggle('bad', sum!==100);
-  return sum;
-}
-sliders.forEach(id=>$('#'+id).addEventListener('input',syncWeights));
-syncWeights();
+function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
+function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
 
-fetch(API+'/api/status').then(r=>r.json()).then(d=>{
-  const t=$('#mockTag');
-  if(d.mock_mode){ t.textContent='● 목업 데이터 (API 키 미설정)'; }
-  else {
-    t.textContent = d.trend_mock ? '● 네이버 API 실시간' : '● 네이버 API 실시간 · 트렌드 자동';
-    t.classList.add('live');
-  }
-}).catch(()=>{
-  $('#mockTag').textContent='● 서버 연결 실패';
-});
-
-// ---- 로그인 게이트 ----
-// 진입 시 저장된 비밀번호를 서버에 검증하고, 통과해야 대시보드가 열린다.
-// (로컬 FastAPI는 게이트가 없어 자동 통과)
-async function verifyKey(key){
-  try{
-    const r = await fetch(API+'/api/verify',{headers:{'X-Gate-Key':key}});
-    return r.ok;
-  }catch(e){ return null; } // 서버 연결 실패
-}
-function openDashboard(){ $('#gate').classList.add('off'); }
-function gateError(msg){ $('#gateErr').textContent = msg; }
-
-async function submitGate(){
-  const pw = $('#gatePw').value;
-  const btn = $('#gateBtn'); btn.disabled = true;
-  const ok = await verifyKey(pw);
-  btn.disabled = false;
-  if(ok){ localStorage.setItem('gateKey', pw); openDashboard(); }
-  else if(ok===null){ gateError('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'); }
-  else { gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
-}
-$('#gateBtn').addEventListener('click', submitGate);
-$('#gatePw').addEventListener('keydown', e=>{ if(e.key==='Enter') submitGate(); });
-
-(async ()=>{
-  const ok = await verifyKey(localStorage.getItem('gateKey')||'');
-  if(ok){ openDashboard(); }
-  else { if(ok===null) gateError('서버에 연결할 수 없습니다.'); $('#gatePw').focus(); }
-})();
-
-function parseInput(){
-  return $('#kwInput').value.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
-    const p=line.split(',').map(x=>x.trim());
-    const o={keyword:p[0]};
-    if(p[1]) o.supply_price=parseFloat(p[1]);
-    if(p[2]) o.sell_price=parseFloat(p[2]);
-    return o;
-  });
+// ---- 캐시 (localStorage) — 재방문 시 API 호출 없이 이전 데이터 사용 ----
+function catCache(){ try{ return JSON.parse(localStorage.getItem('wetak-cats-v1'))||{}; }catch(e){ return {}; } }
+function catCacheGet(cat){ return catCache()[cat]||null; }
+function catCacheSet(cat, entry){
+  const s=catCache(); s[cat]=entry;
+  try{ localStorage.setItem('wetak-cats-v1', JSON.stringify(s)); }catch(e){}
 }
 
-// ---- 모드 탭 (자동 발굴 / 직접 입력) ----
-let autoMode=true;
-function setMode(auto){
-  autoMode=auto;
-  $('#tabAuto').classList.toggle('on',auto);
-  $('#tabManual').classList.toggle('on',!auto);
-  $('#autoPane').style.display=auto?'':'none';
-  $('#manualPane').style.display=auto?'none':'';
-  $('#runBtn').innerHTML=`<span class="dot"></span> ${auto?'자동 발굴':'스코어링'} 실행`;
+// ---- 공통 API 호출 (게이트 401 처리) ----
+function onUnauthorized(){
+  localStorage.removeItem('gateKey');
+  $('#gate').classList.remove('off');
+  gateError('비밀번호를 다시 입력해 주세요.');
 }
-$('#tabAuto').addEventListener('click',()=>setMode(true));
-$('#tabManual').addEventListener('click',()=>setMode(false));
-
-// 카테고리 목록 로드 (서버 실패 시 기본값)
-const FALLBACK_CATS=['캠핑/아웃도어','주방','반려동물','유아/키즈','차량용품','생활/수납','디지털 소품','뷰티/헬스'];
-function fillCats(list){
-  $('#catSel').innerHTML=list.map(c=>`<option value="${c}">${c}</option>`).join('');
-}
-fillCats(FALLBACK_CATS);
-fetch(API+'/api/categories').then(r=>r.json()).then(d=>{ if(d.categories&&d.categories.length) fillCats(d.categories); }).catch(()=>{});
-
-// API 호출: 401이면 (비밀번호가 서버에서 바뀐 경우) 로그인 화면으로 복귀
-async function callApi(path, payload){
-  const res = await fetch(API+path,{
+async function apiPost(path, payload){
+  const res=await fetch(API+path,{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'X-Gate-Key': localStorage.getItem('gateKey')||'',
-    },
+    headers:{'Content-Type':'application/json','X-Gate-Key':gateKeyVal()},
     body:JSON.stringify(payload),
   });
-  if(res.status===401){
-    localStorage.removeItem('gateKey');
-    $('#gate').classList.remove('off');
-    gateError('비밀번호를 다시 입력해 주세요.');
-    throw new Error('비밀번호 인증이 필요합니다.');
-  }
+  if(res.status===401){ onUnauthorized(); throw new Error('비밀번호 인증이 필요합니다.'); }
+  return res;
+}
+async function apiGet(path){
+  const res=await fetch(API+path,{headers:{'X-Gate-Key':gateKeyVal()}});
+  if(res.status===401){ onUnauthorized(); throw new Error('비밀번호 인증이 필요합니다.'); }
   return res;
 }
 
+// ---- 상태 태그 ----
+fetch(API+'/api/status').then(r=>r.json()).then(d=>{
+  const t=$('#mockTag');
+  if(d.mock_mode){ t.textContent='● 목업 데이터 (API 키 미설정)'; }
+  else{
+    t.textContent = d.trend_mock ? '● 네이버 API 실시간' : '● 네이버 API 실시간 · 트렌드 자동';
+    t.classList.add('live');
+  }
+}).catch(()=>{ $('#mockTag').textContent='● 서버 연결 실패'; });
+
+// ---- 로그인 게이트 ----
+async function verifyKey(key){
+  try{
+    const r=await fetch(API+'/api/verify',{headers:{'X-Gate-Key':key}});
+    return r.ok;
+  }catch(e){ return null; }
+}
+function gateError(msg){ $('#gateErr').textContent=msg; }
+let booted=false;
+function openDashboard(){
+  $('#gate').classList.add('off');
+  if(!booted){ booted=true; boot(); }
+}
+async function submitGate(){
+  const pw=$('#gatePw').value;
+  const btn=$('#gateBtn'); btn.disabled=true;
+  const ok=await verifyKey(pw);
+  btn.disabled=false;
+  if(ok){ localStorage.setItem('gateKey', pw); openDashboard(); }
+  else if(ok===null){ gateError('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'); }
+  else{ gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
+}
+$('#gateBtn').addEventListener('click', submitGate);
+$('#gatePw').addEventListener('keydown', e=>{ if(e.key==='Enter') submitGate(); });
+(async ()=>{
+  const ok=await verifyKey(gateKeyVal());
+  if(ok){ openDashboard(); }
+  else{ if(ok===null) gateError('서버에 연결할 수 없습니다.'); $('#gatePw').focus(); }
+})();
+
+// ---- 판정 ----
 function verdict(score, comp){
   if(score>=62 && comp!=='높음') return ['통과','v-pass'];
   if(score>=45) return ['보류','v-hold'];
   return ['제외','v-skip'];
 }
-
-function fmt(n){return n.toLocaleString('ko-KR');}
-
-function weights(){
-  return {
-    w_competition:+$('#wc').value/100,
-    w_margin:+$('#wm').value/100,
-    w_volume:+$('#wv').value/100,
-    w_trend:+$('#wt').value/100,
-  };
+function rowVerdict(r){
+  let [vtxt,vcls]=verdict(r.total_score,r.competition);
+  if(r.supply && r.supply.matched===0){ vtxt='위탁불가'; vcls='v-skip'; }
+  return [vtxt,vcls];
+}
+function trendMark(t){
+  if(t==null) return '<span class="tr-fl">–</span>';
+  if(t>=0.6) return '<span class="tr-up">▲</span>';
+  if(t<=0.4) return '<span class="tr-dn">▼</span>';
+  return '<span class="tr-fl">–</span>';
 }
 
-$('#runBtn').addEventListener('click', async ()=>{
-  const sum=syncWeights();
-  if(sum!==100){ if(!confirm('가중치 합이 100%가 아닙니다. 그대로 진행할까요?')) return; }
-
-  let path, payload;
-  if(autoMode){
-    path='/api/discover';
-    payload={category:$('#catSel').value, limit:+$('#cntSel').value, ...weights()};
-  }else{
-    const kws=parseInput();
-    if(!kws.length){ alert('키워드를 한 개 이상 입력하세요.'); return; }
-    path='/api/score';
-    payload={keywords:kws, expand:$('#expand').checked, supply:$('#supplyChk').checked, ...weights()};
-  }
-
-  const btn=$('#runBtn'); btn.disabled=true;
-  btn.innerHTML=`<span class="dot"></span> ${autoMode?'키워드 스캔 중… (수십 초 걸릴 수 있음)':'계산 중…'}`;
-  try{
-    const res=await callApi(path, payload);
-    const data=await res.json();
-    if(!res.ok||data.error) throw new Error(data.error||('HTTP '+res.status));
-    render(data);
-  }catch(e){
-    $('#resBody').innerHTML=`<div class="empty">오류가 발생했습니다: ${e.message}</div>`;
-  }finally{
-    btn.disabled=false; setMode(autoMode);
-  }
-});
-
-// ---- 2차 검증 체크리스트 (localStorage 저장) ----
+// ---- 2차 검증 체크리스트 ----
 const CHK_ITEMS=[
   '네이버쇼핑 1페이지 셀러 강도 확인 (대형셀러·최저가 경쟁 여부)',
   '공급처에서 실제 위탁 가능 여부·공급가 대조',
@@ -403,109 +325,152 @@ function chkSave(s){ localStorage.setItem('wetak-checks', JSON.stringify(s)); }
 function chkOf(kw){ const s=chkLoad(); return s[kw]||{c:[false,false,false,false,false],m:''}; }
 function chkCount(kw){ return chkOf(kw).c.filter(Boolean).length; }
 
-function rowVerdict(r){
-  let [vtxt,vcls]=verdict(r.total_score,r.competition);
-  if(r.supply && r.supply.matched===0){ vtxt='위탁불가'; vcls='v-skip'; }
-  return [vtxt,vcls];
+// ---- 카테고리 랭킹 ----
+let CATS=FALLBACK_CATS.slice();
+let curCat=null, curPage=1, curData=null;
+
+function renderChips(){
+  $('#cats').innerHTML=CATS.map(c=>`<button class="cat ${c===curCat?'on':''}" data-c="${c}">${c}</button>`).join('');
+}
+$('#cats').addEventListener('click', e=>{
+  const b=e.target.closest('.cat');
+  if(b && b.dataset.c!==curCat) selectCat(b.dataset.c);
+});
+
+async function selectCat(cat, force=false){
+  curCat=cat; curPage=1;
+  localStorage.setItem('wetak-lastcat', cat);
+  renderChips();
+  $('#catTitle').textContent=`등록 후보 랭킹 — ${cat}`;
+
+  const cached=catCacheGet(cat);
+  if(cached && !force){ curData=cached.data; renderTable(cached.ts); return; }
+
+  // 조회한 적 없는 카테고리만 자동 조회 (쿼터 절약)
+  curData=null;
+  $('#csvBtn').disabled=true;
+  $('#pager').style.display='none';
+  $('#catSub').textContent='';
+  $('#tblBody').innerHTML='<div class="empty"><span class="spin"></span>네이버 연관 키워드를 스캔하고 있습니다… (수십 초 걸릴 수 있음)</div>';
+  try{
+    const res=await apiPost('/api/discover',{category:cat, limit:FETCH_LIMIT});
+    const data=await res.json();
+    if(!res.ok||data.error) throw new Error(data.error||('HTTP '+res.status));
+    const entry={ts:Date.now(), data};
+    catCacheSet(cat, entry);
+    if(curCat!==cat) return; // 그 사이 다른 카테고리로 이동한 경우
+    curData=data; renderTable(entry.ts);
+  }catch(e){
+    if(curCat!==cat) return;
+    $('#tblBody').innerHTML=`<div class="empty">조회 실패: ${e.message}<br><br>우측 상단 "새로 조회"로 다시 시도하세요.</div>`;
+  }
 }
 
-let lastData=null;
-
-function render(data){
-  lastData=data;
-  $('#csvBtn').disabled=!data.results.length;
-  let meta;
-  if(data.scanned!=null){
-    meta=`${data.category} · ${fmt(data.scanned)}개 스캔 → ${data.count}개 선별 · ${data.mock?'목업':'실데이터'}`;
-  }else{
-    meta=`${data.count}개 · ${data.mock?'목업':'실데이터'}`;
+function renderTable(ts){
+  const d=curData;
+  $('#csvBtn').disabled=!(d&&d.results.length);
+  const when=new Date(ts);
+  const pad=n=>String(n).padStart(2,'0');
+  $('#catSub').textContent=`${fmt(d.scanned)}개 스캔 → ${d.count}개 선별 · ${d.mock?'목업':'실데이터'} · 갱신 ${pad(when.getMonth()+1)}.${pad(when.getDate())} ${pad(when.getHours())}:${pad(when.getMinutes())}`;
+  if(!d.results.length){
+    $('#tblBody').innerHTML='<div class="empty">조건에 맞는 후보가 없습니다.</div>';
+    $('#pager').style.display='none';
+    return;
   }
-  if(data.supply_mode) meta+=` · 공급처 ${data.supply_mode==='live'?'실데이터':data.supply_mode==='mock'?'목업':'조회 실패'}`;
-  $('#resMeta').textContent=meta;
-  if(!data.results.length){ $('#resBody').innerHTML='<div class="empty">결과 없음</div>'; return; }
+  const start=(curPage-1)*PAGE_SIZE;
+  const rows=d.results.slice(start, start+PAGE_SIZE);
   let html=`<div class="row head">
     <div>#</div><div>키워드</div>
     <div class="col-hide">월 검색량</div>
     <div class="col-hide">경쟁</div>
-    <div class="col-hide">마진</div>
+    <div class="col-hide">트렌드</div>
     <div class="score-cell">점수</div></div>`;
-  data.results.forEach((r,i)=>{
+  rows.forEach((r,j)=>{
+    const i=start+j;
     const [vtxt,vcls]=rowVerdict(r);
-    const marginTxt=r.margin_rate!=null?`${r.margin_rate}%${r.supply&&r.supply.applied?'<span class="via">*</span>':''}`:'—';
-    let viaTxt=r.via?` · <span class="via">연관 ← ${r.via}</span>`:'';
-    if(r.supply&&r.supply.matched>0){
-      viaTxt+=` · 공급 ${r.supply.matched}건`;
-      if(r.supply.min_price) viaTxt+=` · 최저 ${fmt(r.supply.min_price)}원`;
-    }
+    let metaTxt=`PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}`;
+    if(r.via) metaTxt+=` · <span class="via">←${r.via}</span>`;
     const done=chkCount(r.keyword);
-    const badge=done?` · <span class="chk-badge">검증 ${done}/${CHK_ITEMS.length}</span>`:'';
+    if(done) metaTxt+=` · <span class="chk-badge">검증 ${done}/${CHK_ITEMS.length}</span>`;
     html+=`<div class="row clickable" data-i="${i}" title="클릭하면 2차 검증 체크리스트가 열립니다">
       <div class="rank ${i===0?'top':''}">${i+1}</div>
-      <div class="kw">${r.keyword}<span class="meta">PC ${fmt(r.pc)} · 모바일 ${fmt(r.mobile)}${viaTxt}${badge}</span></div>
+      <div class="kw">${r.keyword}<span class="meta">${metaTxt}</span></div>
       <div class="num col-hide">${fmt(r.search_volume)}</div>
       <div class="col-hide"><span class="comp-badge comp-${r.competition}">${r.competition}</span></div>
-      <div class="num col-hide">${marginTxt}</div>
+      <div class="col-hide" style="text-align:center;font-size:15px">${trendMark(r.scores.trend)}</div>
       <div class="score-cell">
         <div class="score-num">${r.total_score}</div>
-        <div class="score-bar"><i style="width:${r.total_score}%"></i></div>
         <div class="verdict ${vcls}">${vtxt}</div>
       </div>
     </div>`;
   });
-  $('#resBody').innerHTML=html;
+  $('#tblBody').innerHTML=html;
+  renderPager();
 }
 
-// 행 클릭 → 체크리스트 패널 토글
-$('#resBody').addEventListener('click', e=>{
+function renderPager(){
+  const total=Math.ceil(curData.results.length/PAGE_SIZE);
+  const p=$('#pager');
+  if(total<=1){ p.style.display='none'; return; }
+  p.style.display='';
+  let html=`<button class="pg" id="pgPrev" ${curPage===1?'disabled':''}>‹</button>`;
+  for(let i=1;i<=total;i++) html+=`<button class="pg ${i===curPage?'on':''}" data-p="${i}">${i}</button>`;
+  html+=`<button class="pg" id="pgNext" ${curPage===total?'disabled':''}>›</button>`;
+  p.innerHTML=html;
+}
+$('#pager').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b||b.disabled) return;
+  const total=Math.ceil(curData.results.length/PAGE_SIZE);
+  if(b.id==='pgPrev') curPage=Math.max(1,curPage-1);
+  else if(b.id==='pgNext') curPage=Math.min(total,curPage+1);
+  else if(b.dataset.p) curPage=+b.dataset.p;
+  const c=catCacheGet(curCat);
+  renderTable(c?c.ts:Date.now());
+});
+
+$('#reloadBtn').addEventListener('click', ()=>{ if(curCat) selectCat(curCat, true); });
+
+// ---- 체크리스트 패널 (행 클릭) ----
+$('#tblBody').addEventListener('click', e=>{
   const row=e.target.closest('.row.clickable');
   if(!row || e.target.closest('.chk-panel')) return;
   const next=row.nextElementSibling;
   if(next && next.classList.contains('chk-panel')){ next.remove(); return; }
   document.querySelectorAll('.chk-panel').forEach(p=>p.remove());
-  const r=lastData.results[+row.dataset.i];
+  const r=curData.results[+row.dataset.i];
   const st=chkOf(r.keyword);
   const panel=document.createElement('div');
   panel.className='chk-panel';
   panel.innerHTML=`<h3>2차 검증 — ${r.keyword}</h3>`+
     CHK_ITEMS.map((t,j)=>`<label class="chk-item ${st.c[j]?'done':''}"><input type="checkbox" data-j="${j}" ${st.c[j]?'checked':''}> ${t}</label>`).join('')+
-    `<div class="chk-memo"><label>실판매 기록 (판매량·전환 메모 — 가중치 튜닝 재료)</label>
+    `<div class="chk-memo"><label>실판매 기록 (판매량·전환 메모)</label>
      <textarea placeholder="예) 7/25 등록, 첫 주 노출 120·클릭 9·판매 2">${st.m||''}</textarea></div>`;
-  panel.addEventListener('change', ev=>{
+  const save=()=>{
     const s=chkLoad(); const cur=s[r.keyword]||{c:[false,false,false,false,false],m:''};
-    if(ev.target.matches('input[type=checkbox]')){
-      cur.c[+ev.target.dataset.j]=ev.target.checked;
-      ev.target.closest('.chk-item').classList.toggle('done', ev.target.checked);
-    }
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cur.c[+cb.dataset.j]=cb.checked; });
     cur.m=panel.querySelector('textarea').value;
     s[r.keyword]=cur; chkSave(s);
-    const badgeDone=cur.c.filter(Boolean).length;
-    const metaEl=row.querySelector('.meta');
-    let b=metaEl.querySelector('.chk-badge');
-    if(badgeDone){
-      if(!b){ metaEl.insertAdjacentHTML('beforeend',' · <span class="chk-badge"></span>'); b=metaEl.querySelector('.chk-badge'); }
-      b.textContent=`검증 ${badgeDone}/${CHK_ITEMS.length}`;
-    }
+  };
+  panel.addEventListener('change', ev=>{
+    if(ev.target.matches('input[type=checkbox]'))
+      ev.target.closest('.chk-item').classList.toggle('done', ev.target.checked);
+    save();
   });
-  panel.querySelector('textarea').addEventListener('input', ()=>{
-    const s=chkLoad(); const cur=s[r.keyword]||{c:[false,false,false,false,false],m:''};
-    cur.m=panel.querySelector('textarea').value; s[r.keyword]=cur; chkSave(s);
-  });
+  panel.querySelector('textarea').addEventListener('input', save);
   row.after(panel);
 });
 
-// ---- CSV 익스포트 ----
+// ---- CSV ----
 function csvCell(v){ return `"${String(v??'').replace(/"/g,'""')}"`; }
 $('#csvBtn').addEventListener('click', ()=>{
-  if(!lastData||!lastData.results.length) return;
-  const head=['순위','키워드','연관출처','월검색량','PC','모바일','경쟁','마진%','마진자동','공급매칭','최저공급가','점수_검색량','점수_경쟁','점수_마진','점수_트렌드','총점','판정','검증진행','실판매메모'];
-  const rows=lastData.results.map((r,i)=>{
+  if(!curData||!curData.results.length) return;
+  const head=['순위','키워드','연관출처','월검색량','PC','모바일','경쟁','점수_검색량','점수_경쟁','점수_트렌드','총점','판정','검증진행','실판매메모'];
+  const rows=curData.results.map((r,i)=>{
     const [vtxt]=rowVerdict(r);
     const st=chkOf(r.keyword);
     return [
       i+1, r.keyword, r.via||'', r.search_volume, r.pc, r.mobile, r.competition,
-      r.margin_rate??'', r.supply&&r.supply.applied?'Y':'', r.supply?r.supply.matched:'',
-      r.supply&&r.supply.min_price?r.supply.min_price:'',
-      r.scores.volume, r.scores.competition, r.scores.margin??'', r.scores.trend,
+      r.scores.volume, r.scores.competition, r.scores.trend,
       r.total_score, vtxt, `${st.c.filter(Boolean).length}/${CHK_ITEMS.length}`, st.m||'',
     ].map(csvCell).join(',');
   });
@@ -513,10 +478,50 @@ $('#csvBtn').addEventListener('click', ()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const d=new Date(), pad=n=>String(n).padStart(2,'0');
-  a.download=`위탁스코어러_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
+  a.download=`위탁스코어러_${(curCat||'').replace(/\//g,'-')}_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
+// ---- 오늘의 인기 검색어 (하루 1회) ----
+async function loadTrending(){
+  const today=new Date().toISOString().slice(0,10);
+  let cached=null;
+  try{ cached=JSON.parse(localStorage.getItem('wetak-trend-v1')); }catch(e){}
+  if(cached && cached.date===today && cached.top){ renderTrending(cached); return; }
+  try{
+    const res=await apiGet('/api/trending');
+    const d=await res.json();
+    if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
+    const entry={date:today, top:d.top, mock:d.mock};
+    localStorage.setItem('wetak-trend-v1', JSON.stringify(entry));
+    renderTrending(entry);
+  }catch(e){
+    if(cached && cached.top){ renderTrending(cached); return; } // 어제 데이터라도 표시
+    $('#trendList').innerHTML=`<div class="empty" style="padding:32px 16px">조회 실패</div>`;
+  }
+}
+function renderTrending(entry){
+  $('#trendSub').textContent=`${entry.date} 기준 · ${entry.mock?'목업':'실데이터'}`;
+  $('#trendList').innerHTML=entry.top.map((t,i)=>`
+    <li class="trend-item">
+      <span class="t-rank">${i+1}</span>
+      <span class="t-kw">${t.keyword}</span>
+      <span class="t-vol">${fmt(t.volume)}</span>
+    </li>`).join('');
+}
+
+// ---- 부팅: 게이트 통과 후 1회 ----
+async function boot(){
+  try{
+    const r=await fetch(API+'/api/categories');
+    const d=await r.json();
+    if(d.categories && d.categories.length) CATS=d.categories;
+  }catch(e){}
+  const last=localStorage.getItem('wetak-lastcat');
+  loadTrending();
+  selectCat(CATS.includes(last)?last:CATS[0]);
+}
 </script>
 </body>
 </html>
