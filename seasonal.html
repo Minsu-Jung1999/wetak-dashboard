@@ -92,6 +92,10 @@
   .sup-b2b .s-name a:hover{color:var(--signal)}
   .sup-b2b .s-meta{font-size:11.5px;color:var(--dim);margin-top:1px}
   .sup-b2b .s-contact{font-size:11.5px;color:var(--signal);font-weight:700;margin-top:1px}
+  .sup-h{font-size:11px;letter-spacing:.05em;font-weight:800;color:var(--ink);margin:13px 0 3px;text-transform:uppercase}
+  .sup-h:first-of-type{margin-top:0}
+  .cond4{font-size:11.5px;color:var(--dim);background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:8px 11px;line-height:1.6}
+  .cond4 b{color:var(--signal)}
   .lnk{display:inline-block;font-size:11px;font-weight:700;color:var(--signal);border:1px solid var(--signal);border-radius:6px;padding:3px 10px;text-decoration:none;margin-right:6px}
   .lnk:hover{background:var(--signal);color:#fff}
   .lnk.dark{color:var(--ink);border-color:var(--ink)}
@@ -330,8 +334,18 @@ function renderAll(){
 }
 
 // ---- 행 클릭 → 우측 리서치 패널: ① 판매가 → ② 도매 기준선 → ③ 마진 → ④ 공급처 ----
-// 위탁 B2B 플랫폼 디렉터리 (2026-07-22 조사 — DEVLOG E33 참고)
-const B2B_PLATFORMS=[
+// 위탁 공급처 디렉터리 (2026-07-22 조사 — DEVLOG E33 참고)
+// A. 도매가를 바로 볼 수 있는 곳 — 품목 검색 링크 자동 생성 (search에 품목명이 들어감)
+const B2B_OPEN=[
+  {name:'도매매', search:n=>'https://domemedb.domeggook.com/index/item/supplyList.php?sw='+encodeURIComponent(n),
+   note:'전문셀러용 B2B 배송대행(위탁 표준) — 상품별 도매 공급가 즉시 열람, 1개 단위 발주·사방넷 연동'},
+  {name:'도매꾹', search:n=>'https://domeggook.com/main/item/itemList.php?sw='+encodeURIComponent(n),
+   note:'묶음 도매(사입형) — 최소구매수량 단위 도매가 공개, 대량 매입 시 단가 비교용'},
+  {name:'우체국쇼핑', search:n=>'https://mall.epost.go.kr/fo/search/search.do?searchTerm='+encodeURIComponent(n),
+   note:'국가 검증 입점사 판매가 공개 — 위탁 협상 기준선, 입점사 자체가 황금거래처 후보'},
+];
+// B. 상담 후 단가 공개 (전담 매니저형 — 가입비 없음)
+const B2B_CONSULT=[
   {name:'바롬농수산', url:'http://barom.kr/',
    note:'경락가+최소마진 공급 · 가입비/월회비 없음 · CJ대한통운 당일출고 · 품질 클레임 100% 업체 부담 · 위약금 없이 중단 가능',
    contact:'☎ 010-8498-2893 · 카톡 @바롬농수산 · info@baromfarm.co.kr'},
@@ -340,7 +354,6 @@ const B2B_PLATFORMS=[
    contact:'☎ 010-7149-6861 · main@econfarm.co.kr'},
   {name:'행운프레시', url:'https://luckyfresh.co.kr/', note:'과일 위탁판매 B2B · 자동발주 시스템', contact:''},
   {name:'KAFB2B 온라인도매시장', url:'https://kafb2b.or.kr/', note:'공공(aT) 농수산물 온라인 도매시장 — 판매수수료 0 · 사업자 필요', contact:''},
-  {name:'도매매 (도매꾹 B2B)', url:'https://domemedb.domeggook.com/', note:'범용 배송대행 B2B — 공산품 포함, API 연동 가능(M3)', contact:''},
 ];
 
 let drawerItem=null;
@@ -385,14 +398,24 @@ function openDrawer(name){
     </div>
     <div class="d-sec">
       <h3>④ 위탁 공급처 후보 — 컨택 리스트</h3>
-      ${B2B_PLATFORMS.map(b=>`
+      <div class="cond4"><b>황금 거래처 4조건</b> — ① 출고지연을 솔직히 고지하는가 · ② 산지에서 직접 검수하는가 · ③ 네이버 상위 5~6개 평균가보다 싸게 공급 가능한가 · ④ 파손·불량 시 업체가 보상하는가</div>
+      <div class="sup-h">도매가 바로 확인 — ${name} 검색 결과로 이동</div>
+      ${B2B_OPEN.map(b=>`
+        <div class="sup-b2b">
+          <div class="s-name">${b.name} <a class="lnk" style="margin-left:6px" href="${b.search(name)}" target="_blank" rel="noopener">${name} 도매가 보기↗</a></div>
+          <div class="s-meta">${b.note}</div>
+        </div>`).join('')}
+      <div class="sup-h">상담 후 단가 공개 — 전담 매니저형 (가입비 없음)</div>
+      ${B2B_CONSULT.map(b=>`
         <div class="sup-b2b">
           <div class="s-name"><a href="${b.url}" target="_blank" rel="noopener">${b.name}↗</a></div>
           <div class="s-meta">${b.note}</div>
           ${b.contact?`<div class="s-contact">${b.contact}</div>`:''}
         </div>`).join('')}
+      <div class="sup-h">이 품목 산지 후보 — 황금거래처 발굴 (우체국 입점사·GAP 농가·주산지 법인)</div>
+      <div id="srcWrap"><span class="spin"></span>산지 소싱처 조회 중…</div>
       <div style="margin-top:11px">
-        <a class="lnk dark" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 산지 소싱처 (우체국·GAP·주산지 법인) →</a>
+        <a class="lnk dark" href="sourcing.html?item=${encodeURIComponent(name)}">산지 소싱처 전체 보기 (컨택 체크 관리) →</a>
       </div>
     </div>
     <div class="d-sec">
@@ -430,6 +453,43 @@ function openDrawer(name){
   $('#drawer').classList.add('on');
   recalc();
   loadNaverPrices(name, body, it);
+  loadSuppliers(name, body);
+}
+
+// ---- 산지 후보 (우체국·GAP·법인) — sourcing.html과 같은 일 1회 캐시(wetak-suppliers-v2) 공유 ----
+async function loadSuppliers(name, body){
+  let entry=null;
+  try{ entry=(JSON.parse(localStorage.getItem('wetak-suppliers-v2'))||{})[name]||null; }catch(e){}
+  if(entry) renderSrc(body, entry.data); // 캐시 즉시 표시 (어제 것이라도)
+  if(entry && entry.date===todayStr()) return;
+  try{
+    const res=await apiGet('/api/suppliers?item='+encodeURIComponent(name));
+    const d=await res.json();
+    if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
+    let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-suppliers-v2'))||{}; }catch(e){}
+    s[name]={date:todayStr(), data:d};
+    try{ localStorage.setItem('wetak-suppliers-v2', JSON.stringify(s)); }catch(e){}
+    if(drawerItem===name) renderSrc(body, d);
+  }catch(e){
+    if(e.message!=='auth'&&drawerItem===name&&!entry){
+      const w=body.querySelector('#srcWrap');
+      if(w) w.innerHTML='<span style="color:var(--dim);font-size:12px">산지 소싱처 조회 실패 — 소싱처 페이지에서 다시 시도하세요.</span>';
+    }
+  }
+}
+function renderSrc(body, d){
+  const wrap=body.querySelector('#srcWrap');
+  if(!wrap) return;
+  const ep=(d.epost&&d.epost.items||[]).slice(0,3).map(x=>
+    `<div class="s-meta">· ${x.name} ${x.price?`<b style="color:var(--ink)">${fmt(x.price)}원</b>`:''} <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--signal);font-weight:700">확인↗</a></div>`).join('');
+  const gap=(d.gap&&d.gap.items||[]).slice(0,2).map(g=>
+    `<div class="s-meta">· ${g.group} (${g.region}) <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(g.group+' '+g.region)}" target="_blank" rel="noopener" style="color:var(--signal);font-weight:700">검색↗</a></div>`).join('');
+  const loc=(d.local&&d.local.groups||[]).flatMap(g=>g.businesses||[]).slice(0,2).map(b=>
+    `<div class="s-meta">· ${b.name}${b.telephone?' ☎ '+b.telephone:''}</div>`).join('');
+  wrap.innerHTML=`
+    <div class="sup-b2b"><div class="s-name">우체국쇼핑 입점사 <span style="font-weight:400;font-size:11px;color:var(--dim)">국가 검증 · 판매가 공개</span></div>${ep||'<div class="s-meta">검색 결과 없음</div>'}</div>
+    <div class="sup-b2b"><div class="s-name">GAP 인증 생산자</div>${gap||'<div class="s-meta">데이터 없음</div>'}</div>
+    <div class="sup-b2b"><div class="s-name">주산지 농업회사법인${d.local&&d.local.mode!=='live'?' <span style="font-weight:400;font-size:11px;color:#8a7523">목업 — 검색 API 권한 필요</span>':''}</div>${loc||'<div class="s-meta">데이터 없음</div>'}</div>`;
 }
 function closeDrawer(){
   drawerItem=null;
