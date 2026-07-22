@@ -86,8 +86,10 @@
     <div class="brand">위탁 스코어러 · Sourcing Console</div>
     <h2>비밀번호 입력</h2>
     <p>등록된 사용자만 이용할 수 있습니다.</p>
-    <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
-    <button class="run" id="gateBtn"><span class="dot"></span> 입장</button>
+    <form id="gateForm">
+      <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
+      <button type="submit" class="run" id="gateBtn"><span class="dot"></span> 입장</button>
+    </form>
     <div class="gate-err" id="gateErr"></div>
   </div>
 </div>
@@ -184,8 +186,7 @@ async function submitGate(){
   else if(ok===null){ gateError('서버에 연결할 수 없습니다.'); }
   else{ gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
 }
-$('#gateBtn').addEventListener('click',submitGate);
-$('#gatePw').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGate(); });
+$('#gateForm').addEventListener('submit',e=>{ e.preventDefault(); submitGate(); });
 // 저장된 키가 있으면 깜빡임 없이 즉시 열고, 검증은 백그라운드에서 (틀리면 API 401이 잡음)
 if(gateKeyVal()){
   openDashboard();
