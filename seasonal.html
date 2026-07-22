@@ -482,7 +482,7 @@ async function loadDomemePrices(name, body){
 function renderDm(body, dm){
   const wrap=body.querySelector('#dmWrap');
   if(!wrap) return;
-  if(!dm.items||!dm.items.length){ wrap.innerHTML='<span class="s-meta">도매매 검색 결과 없음</span>'; return; }
+  if(!dm.items||!dm.items.length){ wrap.innerHTML='<span class="s-meta">도매매에 이 품목 원물 없음 (가공품 제외 기준) — 산지 위탁(상담형 B2B)으로 컨택하세요.</span>'; return; }
   const modeTxt=dm.mode==='live'?'실데이터':'목업';
   const rows=dm.items.map((x,i)=>{
     const kg=parseKg(x.title);
@@ -498,7 +498,7 @@ function renderDm(body, dm){
     </tr>`;
   }).join('');
   wrap.innerHTML=`
-    <div style="font-size:11.5px;color:var(--dim);margin:2px 0 5px">매칭 ${fmt(dm.matched)}건 · 배송비 포함 총원가 낮은 순 5건 <span class="np-badge ${dm.mode==='live'?'live':''}">${modeTxt}</span></div>
+    <div style="font-size:11.5px;color:var(--dim);margin:2px 0 5px">원물 ${fmt(dm.matched)}건 (가공품·잡화 제외) · 배송비 포함 총원가 낮은 순 <span class="np-badge ${dm.mode==='live'?'live':''}">${modeTxt}</span></div>
     <div class="np-scroll"><table class="np-table">
       <tr><th>#</th><th>상품</th><th>공급가</th><th>배송비</th><th>kg당(총원가)</th><th></th></tr>${rows}
     </table></div>`;
