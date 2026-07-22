@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가격비교 · 위탁 스코어러</title>
+<style>
+  :root{
+    --ink:#12130f; --paper:#f0ede3; --paper-2:#e6e2d4; --line:#c9c4b2;
+    --signal:#1f5c3d; --signal-soft:#e2ecdf; --warn:#b6552a; --dim:#6a6858; --hi:#d8ff3e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',-apple-system,'Segoe UI',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+  button{font-family:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header{border-bottom:2px solid var(--ink);padding:18px 0}
+  .brandline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{font-size:13px;letter-spacing:.32em;text-transform:uppercase;font-weight:800}
+  .nav{display:flex;gap:6px;flex-wrap:wrap}
+  .nav a{font-size:13px;font-weight:700;color:var(--dim);text-decoration:none;padding:7px 14px;border-radius:99px;border:1px solid transparent}
+  .nav a:hover{color:var(--ink);border-color:var(--line)}
+  .nav a.on{background:var(--ink);color:var(--hi)}
+  .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
+  .mock-tag.live{color:var(--signal);border-color:var(--signal)}
+
+  .main{margin-top:22px;padding-bottom:70px}
+  .search-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .search-bar input{flex:1;min-width:200px;padding:13px 15px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper-2);color:var(--ink)}
+  .search-bar input:focus{outline:2px solid var(--signal);outline-offset:1px}
+  #searchBtn{background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:14px;padding:13px 26px;border-radius:10px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .chip{background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px}
+  .chip:hover{border-color:var(--ink);color:var(--ink)}
+
+  .sec{margin-top:24px}
+  .sec h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:10px}
+  .np-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+  .np-table{width:100%;border-collapse:collapse}
+  .np-table th,.np-table td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:12.5px;white-space:nowrap}
+  .np-table tr:last-child td{border-bottom:none}
+  .np-table th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+  .np-table td.tt{max-width:420px;overflow:hidden;text-overflow:ellipsis}
+  .np-table td.num{font-variant-numeric:tabular-nums}
+  .np-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#f0e9d6;color:#8a7523;vertical-align:1px}
+  .np-badge.live{background:var(--signal-soft);color:var(--signal)}
+  .cap{font-size:11.5px;color:var(--dim);margin-bottom:6px}
+  .lnk{display:inline-block;font-size:11px;font-weight:700;color:var(--signal);border:1px solid var(--signal);border-radius:6px;padding:3px 10px;text-decoration:none;margin-right:6px;background:none;cursor:pointer}
+  .lnk:hover{background:var(--signal);color:#fff}
+
+  .calc-grid{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .calc-grid label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:700;display:block;margin-bottom:4px}
+  .calc-grid input{width:140px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);font-variant-numeric:tabular-nums}
+  .calc-grid input:focus{outline:2px solid var(--signal);outline-offset:1px}
+  .calc-result{font-size:16px;font-weight:800;min-width:130px}
+  .margin-val{color:var(--signal)}
+  .margin-neg{color:var(--warn)}
+  .calc-note{font-size:11.5px;color:var(--dim);margin-top:8px}
+  .empty{color:var(--dim);text-align:center;padding:36px 20px;font-size:13.5px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--signal);border-radius:99px;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .foot{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding:16px 0;text-align:center}
+
+  /* 게이트 */
+  .gate{position:fixed;inset:0;background:var(--paper);z-index:99;display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate.off{display:none}
+  .gate-box{width:100%;max-width:380px;background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:34px 28px}
+  .gate-box .brand{margin-bottom:18px;font-size:12px}
+  .gate-box h2{font-size:24px;font-weight:800;margin-bottom:6px}
+  .gate-box p{font-size:13px;color:var(--dim);margin-bottom:18px}
+  .gate-box input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--paper);color:var(--ink);letter-spacing:.2em}
+  .gate-box .run{width:100%;justify-content:center;margin-top:14px;background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:15px;padding:14px;border-radius:10px;display:inline-flex;align-items:center;gap:10px}
+  .gate-box .dot{width:8px;height:8px;background:var(--hi);border-radius:99px}
+  .gate-err{font-size:13px;color:var(--warn);font-weight:700;margin-top:12px;min-height:20px}
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="brand">위탁 스코어러 · Sourcing Console</div>
+    <h2>비밀번호 입력</h2>
+    <p>등록된 사용자만 이용할 수 있습니다.</p>
+    <form id="gateForm">
+      <input type="password" id="gatePw" placeholder="••••••" autocomplete="current-password">
+      <button type="submit" class="run" id="gateBtn"><span class="dot"></span> 입장</button>
+    </form>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<script>try{if(localStorage.getItem('gateKey'))document.getElementById('gate').classList.add('off')}catch(e){}</script>
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div class="brand">위탁 스코어러</div>
+        <nav class="nav">
+          <a href="./">대시보드</a>
+          <a href="insight.html">인사이트</a>
+          <a href="compare.html" class="on">가격비교</a>
+          <a href="seasonal.html">제철 레이더</a>
+          <a href="sourcing.html">소싱처</a>
+          <a href="board.html">운영 보드</a>
+        </nav>
+      </div>
+      <div id="mockTag" class="mock-tag">확인 중…</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="search-bar">
+      <input type="text" id="qInput" placeholder="아무 상품이나 입력 (예: 선크림, 제습제, 캠핑의자)">
+      <button id="searchBtn">조회하기</button>
+      <button id="forceBtn" class="chip" title="오늘 캐시를 무시하고 다시 조회">새로 조회</button>
+    </div>
+    <div class="chips" id="recentChips"></div>
+
+    <div id="results" style="display:none">
+      <div class="sec">
+        <h2>① 네이버쇼핑 판매가 — 상위 5개 (내 판매가 기준선)</h2>
+        <div id="nvBody"></div>
+      </div>
+      <div class="sec">
+        <h2>② 도매매 공급가 — 정확도순 10건 (위탁 원가)</h2>
+        <div id="dmBody"></div>
+      </div>
+      <div class="sec">
+        <h2>③ 마진 계산 — 수수료 6%</h2>
+        <div class="calc-grid">
+          <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" placeholder="① 표에서 적용"></div>
+          <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" placeholder="② 표에서 적용 (배송비 포함)"></div>
+          <div><label>마진</label><div class="calc-result" id="cResult">—</div></div>
+        </div>
+        <div class="calc-note" id="cGuide"></div>
+        <div class="calc-note">판매가·공급가는 표의 "적용" 버튼으로 넣거나 직접 수정하세요. 공급가 적용 시 배송비가 합산됩니다.</div>
+      </div>
+    </div>
+    <div class="empty" id="placeholder">상품 키워드를 입력하고 조회하세요. 인사이트의 인기 검색어에서 넘어올 수도 있습니다.</div>
+  </div>
+
+  <div class="foot">네이버 판매가·도매매 공급가는 하루 1회 조회 후 캐시됩니다 (규칙 #6). 도매매 발주는 사업자 전문셀러 인증 후 가능.</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
+const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
+const NAVER_FEE = 0.06;
+let curKw = '';
+
+function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
+function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
+function todayStr(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+
+async function apiGet(path){
+  const res=await fetch(API+path,{headers:{'X-Gate-Key':gateKeyVal()}});
+  if(res.status===401){ localStorage.removeItem('gateKey'); $('#gate').classList.remove('off'); gateError('비밀번호를 다시 입력해 주세요.'); throw new Error('auth'); }
+  return res;
+}
+
+// ---- 게이트 ----
+async function verifyKey(key){ try{ const r=await fetch(API+'/api/verify',{headers:{'X-Gate-Key':key}}); return r.ok; }catch(e){ return null; } }
+function gateError(m){ $('#gateErr').textContent=m; }
+let booted=false;
+function openDashboard(){ $('#gate').classList.add('off'); if(!booted){ booted=true; boot(); } }
+async function submitGate(){
+  const pw=$('#gatePw').value, btn=$('#gateBtn'); btn.disabled=true;
+  const ok=await verifyKey(pw); btn.disabled=false;
+  if(ok){ localStorage.setItem('gateKey',pw); openDashboard(); }
+  else if(ok===null){ gateError('서버에 연결할 수 없습니다.'); }
+  else{ gateError('비밀번호가 맞지 않습니다.'); $('#gatePw').select(); }
+}
+$('#gateForm').addEventListener('submit',e=>{ e.preventDefault(); submitGate(); });
+if(gateKeyVal()){
+  openDashboard();
+  verifyKey(gateKeyVal()).then(ok=>{ if(ok===false){ localStorage.removeItem('gateKey'); $('#gate').classList.remove('off'); gateError('비밀번호를 다시 입력해 주세요.'); $('#gatePw').focus(); } });
+}else{ $('#gatePw').focus(); }
+
+fetch(API+'/api/status').then(r=>r.json()).then(d=>{
+  const t=$('#mockTag');
+  if(d.mock_mode){ t.textContent='● 목업 데이터'; } else{ t.textContent='● 실데이터'; t.classList.add('live'); }
+}).catch(()=>{ $('#mockTag').textContent='● 서버 연결 실패'; });
+
+// ---- 최근 검색 칩 ----
+function recentList(){ try{ return JSON.parse(localStorage.getItem('wetak-cmp-recent'))||[]; }catch(e){ return []; } }
+function pushRecent(kw){
+  const l=[kw, ...recentList().filter(k=>k!==kw)].slice(0,12);
+  localStorage.setItem('wetak-cmp-recent', JSON.stringify(l));
+  renderRecent();
+}
+function renderRecent(){
+  $('#recentChips').innerHTML=recentList().map(k=>`<button class="chip" data-k="${k.replace(/"/g,'&quot;')}">${k}</button>`).join('');
+}
+$('#recentChips').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) search(b.dataset.k); });
+
+// ---- 조회 (규칙 #6: 캐시 즉시 표시 → 하루 1회 백그라운드 갱신 → 강제는 새로 조회 버튼) ----
+function cacheGet(kw){ try{ return (JSON.parse(localStorage.getItem('wetak-cmp-v1'))||{})[kw]||null; }catch(e){ return null; } }
+function cacheSet(kw, data){
+  let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-cmp-v1'))||{}; }catch(e){}
+  s[kw]={date:todayStr(), ...data};
+  // 용량 보호: 30개 넘으면 오래된 키 제거
+  const keys=Object.keys(s);
+  if(keys.length>30) keys.sort((a,b)=>(s[a].date||'').localeCompare(s[b].date||'')).slice(0,keys.length-30).forEach(k=>delete s[k]);
+  try{ localStorage.setItem('wetak-cmp-v1', JSON.stringify(s)); }catch(e){}
+}
+
+async function search(kw, force=false){
+  kw=(kw||'').trim();
+  if(!kw) return;
+  curKw=kw;
+  $('#qInput').value=kw;
+  $('#placeholder').style.display='none';
+  $('#results').style.display='';
+  pushRecent(kw);
+  const cached=cacheGet(kw);
+  if(cached){ renderAll(cached); } // 캐시 즉시 표시 (어제 것이라도)
+  if(cached && cached.date===todayStr() && !force) return;
+  if(!cached){
+    $('#nvBody').innerHTML='<div class="empty"><span class="spin"></span>네이버쇼핑 조회 중…</div>';
+    $('#dmBody').innerHTML='<div class="empty"><span class="spin"></span>도매매 조회 중…</div>';
+  }
+  try{
+    const [nvRes, dmRes]=await Promise.all([
+      apiGet('/api/naver-prices?scope=all&q='+encodeURIComponent(kw)),
+      apiGet('/api/domeme-prices?scope=all&q='+encodeURIComponent(kw)),
+    ]);
+    const nv=await nvRes.json(), dm=await dmRes.json();
+    if(!nvRes.ok||nv.error) throw new Error(nv.error||('HTTP '+nvRes.status));
+    if(!dmRes.ok||dm.error) throw new Error(dm.error||('HTTP '+dmRes.status));
+    const data={naver:nv, domeme:dm};
+    cacheSet(kw, data);
+    if(curKw===kw) renderAll(data);
+  }catch(e){
+    if(e.message!=='auth'&&curKw===kw&&!cached){
+      $('#nvBody').innerHTML=`<div class="empty">조회 실패: ${e.message}</div>`;
+      $('#dmBody').innerHTML='';
+    }
+  }
+}
+
+// ---- 렌더 ----
+function badge(mode){
+  const t=mode==='live'?'실데이터':(mode==='no-scope'?'목업 — 네이버 앱에 검색 API 권한 필요':'목업');
+  return `<span class="np-badge ${mode==='live'?'live':''}">${t}</span>`;
+}
+function renderAll(data){
+  const nv=data.naver, dm=data.domeme;
+  // ① 네이버 판매가
+  if(!nv.items||!nv.items.length){
+    $('#nvBody').innerHTML='<div class="empty">네이버쇼핑 결과 없음</div>';
+  }else{
+    $('#nvBody').innerHTML=`<div class="cap">정확도순 ${nv.items.length}건 ${badge(nv.mode)}</div>
+      <div class="np-scroll"><table class="np-table">
+      <tr><th>#</th><th>상품</th><th>판매가</th><th>판매처</th><th></th></tr>
+      ${nv.items.map((x,i)=>`<tr>
+        <td>${i+1}</td>
+        <td class="tt"><a href="${x.link}" target="_blank" rel="noopener" style="color:inherit">${x.title}</a></td>
+        <td class="num" style="font-weight:700">${fmt(x.price)}원</td>
+        <td style="color:var(--dim)">${x.mall||''}</td>
+        <td><button class="lnk" data-sell="${x.price}">판매가 적용</button></td>
+      </tr>`).join('')}
+      </table></div>`;
+  }
+  // ② 도매매 공급가
+  if(!dm.items||!dm.items.length){
+    $('#dmBody').innerHTML='<div class="empty">도매매 결과 없음 — 다른 키워드로 시도해보세요.</div>';
+  }else{
+    $('#dmBody').innerHTML=`<div class="cap">키워드 매칭 ${fmt(dm.matched)}건 중 ${dm.items.length}건 ${badge(dm.mode)}</div>
+      <div class="np-scroll"><table class="np-table">
+      <tr><th>#</th><th>상품</th><th>공급가</th><th>배송비</th><th>총원가</th><th>묶음</th><th></th></tr>
+      ${dm.items.map((x,i)=>{
+        const total=x.price+(x.deli_fee||0);
+        return `<tr>
+        <td>${i+1}</td>
+        <td class="tt"><a href="${x.url}" target="_blank" rel="noopener" style="color:inherit">${x.title}</a></td>
+        <td class="num">${fmt(x.price)}원</td>
+        <td class="num">${x.deli_fee?fmt(x.deli_fee)+'원':'무료'}</td>
+        <td class="num" style="font-weight:700">${fmt(total)}원</td>
+        <td class="num">${x.unit_qty&&x.unit_qty>1?x.unit_qty+'개':'1개'}</td>
+        <td><button class="lnk" data-supply="${total}">공급가 적용</button></td>
+      </tr>`;}).join('')}
+      </table></div>`;
+  }
+  recalc();
+}
+
+// ---- 마진 계산 ----
+function recalc(){
+  const sell=+$('#cSell').value||null, supply=+$('#cSupply').value||null;
+  const el=$('#cResult'), g=$('#cGuide');
+  if(sell&&supply){
+    const net=sell*(1-NAVER_FEE)-supply;
+    const mg=Math.round(net/sell*1000)/10;
+    el.innerHTML=`<span class="${mg<0?'margin-neg':'margin-val'}">${mg}%</span> <span style="font-size:12px;color:var(--dim)">(개당 ${fmt(Math.round(net))}원)</span>`;
+  }else el.textContent='—';
+  if(sell){
+    g.innerHTML=`협상 가이드 — 마진 20%: 공급가 ≤ <b>${fmt(Math.round(sell*0.74))}원</b> · 15%: ≤ <b>${fmt(Math.round(sell*0.79))}원</b> · <span style="color:var(--warn)">5% 미만(패스): ${fmt(Math.round(sell*0.89))}원 초과</span>`;
+  }else g.textContent='';
+}
+document.addEventListener('input',e=>{ if(e.target.id==='cSell'||e.target.id==='cSupply') recalc(); });
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-sell]'), p=e.target.closest('[data-supply]');
+  if(s){ $('#cSell').value=+s.dataset.sell; recalc(); }
+  if(p){ $('#cSupply').value=+p.dataset.supply; recalc(); }
+});
+
+$('#searchBtn').addEventListener('click',()=>search($('#qInput').value));
+$('#qInput').addEventListener('keydown',e=>{ if(e.key==='Enter') search($('#qInput').value); });
+$('#forceBtn').addEventListener('click',()=>search($('#qInput').value||curKw, true));
+
+function boot(){
+  renderRecent();
+  const q=new URLSearchParams(location.search).get('q');
+  if(q) search(q);
+}
+</script>
+</body>
+</html>

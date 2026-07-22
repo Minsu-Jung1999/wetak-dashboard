@@ -99,6 +99,7 @@
         <nav class="nav">
           <a href="./">대시보드</a>
           <a href="insight.html" class="on">인사이트</a>
+          <a href="compare.html">가격비교</a>
           <a href="seasonal.html">제철 레이더</a>
           <a href="sourcing.html">소싱처</a>
           <a href="board.html">운영 보드</a>
@@ -274,9 +275,10 @@ function render(){
   fillKeywords();
 }
 
-// ---- 분야별 인기 검색어 TOP 10 — 카드에 기본 표시 (일 1회 캐시, 순차 로딩) ----
-async function kwData(cat){
-  try{ const e=(JSON.parse(localStorage.getItem('wetak-insight-kw-v1'))||{})[cat]; if(e&&e.date===todayStr()) return e.data; }catch(e){}
+// ---- 분야별 인기 검색어 TOP 10 — 카드에 기본 표시 ----
+// 규칙 #6: 캐시 즉시 표시(어제 것이라도) → 하루 1회만 백그라운드 갱신 → 스피너는 캐시 없을 때만
+function kwCacheGet(cat){ try{ return (JSON.parse(localStorage.getItem('wetak-insight-kw-v1'))||{})[cat]||null; }catch(e){ return null; } }
+async function kwFetch(cat){
   const res=await apiGet('/api/insight-keywords?cat='+encodeURIComponent(cat));
   const d=await res.json();
   if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
@@ -292,31 +294,39 @@ function kwHtml(data){
       <span class="kw-name">${k.keyword}</span>
       <span class="kw-vol">${Number(k.volume).toLocaleString('ko-KR')}</span>
       <span class="comp-badge comp-${k.competition}">${k.competition}</span>
+      <a class="kw-link" href="compare.html?q=${encodeURIComponent(k.keyword)}" title="네이버 판매가 vs 도매매 공급가 비교">비교</a>
       <a class="kw-link" href="https://search.shopping.naver.com/search/all?query=${encodeURIComponent(k.keyword)}" target="_blank" rel="noopener">쇼핑↗</a>
     </div>`).join('');
 }
 let kwFillSeq=0;
-async function fillKeywords(){
+async function fillKeywords(force=false){
   const seq=++kwFillSeq; // 렌더가 다시 일어나면 이전 루프 중단
   const boxes=[...document.querySelectorAll('.kwbox[data-kw]')];
+  const need=[]; // 서버 조회가 필요한 카드만 (캐시 없음 또는 오늘자 아님)
+  for(const box of boxes){
+    const e=kwCacheGet(box.dataset.kw);
+    if(e) box.innerHTML=kwHtml(e.data); // 어제 캐시라도 즉시 표시
+    if(!e || e.date!==todayStr() || force) need.push(box);
+  }
   let idx=0;
   const worker=async()=>{
-    while(idx<boxes.length){
+    while(idx<need.length){
       if(seq!==kwFillSeq) return;
-      const box=boxes[idx++];
+      const box=need[idx++];
       try{
-        const d=await kwData(box.dataset.kw); // 캐시면 즉시
+        const d=await kwFetch(box.dataset.kw);
         if(box.isConnected) box.innerHTML=kwHtml(d);
       }catch(e){
         if(e.message==='auth') return;
-        if(box.isConnected) box.innerHTML='<span style="color:var(--dim)">인기 검색어 조회 실패 — "새로 조회"로 재시도</span>';
+        // 캐시가 이미 표시돼 있으면 조용히 유지, 아예 없을 때만 실패 표시
+        if(box.isConnected&&!kwCacheGet(box.dataset.kw)) box.innerHTML='<span style="color:var(--dim)">인기 검색어 조회 실패 — "새로 조회"로 재시도</span>';
       }
     }
   };
   await Promise.all([worker(),worker(),worker()]); // 3개 동시 (전체 병렬은 네이버 429 위험)
 }
 
-$('#reloadBtn').addEventListener('click',()=>loadInsight(true));
+$('#reloadBtn').addEventListener('click',()=>{ loadInsight(true); fillKeywords(true); });
 function boot(){ renderUnitSeg(); loadInsight(); }
 </script>
 </body>
