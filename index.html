@@ -274,6 +274,9 @@ function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
 // 네이버쇼핑 검색 결과로 이동 (스마트스토어 등록 대상 채널 — 경쟁 셀러·가격 확인)
 function shopUrl(kw){ return 'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(kw); }
 function storeBtn(kw){ return `<a class="store-btn" href="${shopUrl(kw)}" target="_blank" rel="noopener" title="네이버쇼핑에서 '${kw}' 검색">스토어↗</a>`; }
+// 어떤 키워드든 운영 보드로 승격 (제철 아니어도 전 품목 파이프라인 관리 — E29)
+function b64meta(m){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(m))))); }
+function boardBtn(kw, m){ return `<a class="store-btn" href="board.html?add=${encodeURIComponent(kw)}&type=일반&meta=${b64meta(m||{})}" title="운영 보드에 담기 (관심 단계로 추가)">＋보드</a>`; }
 
 function todayStr(){
   const d=new Date(), p=n=>String(n).padStart(2,'0');
@@ -494,7 +497,7 @@ function renderTable(ts){
     if(done) metaTxt+=` · <span class="chk-badge">검증 ${done}/${CHK_ITEMS.length}</span>`;
     html+=`<div class="row clickable" data-i="${i}" title="클릭하면 2차 검증 체크리스트가 열립니다">
       <div class="rank ${i===0?'top':''}">${i+1}</div>
-      <div class="kw">${r.keyword}${storeBtn(r.keyword)}<span class="meta">${metaTxt}</span></div>
+      <div class="kw">${r.keyword}${storeBtn(r.keyword)}${boardBtn(r.keyword,{search_volume:r.search_volume,trend_slope:(r.scores&&r.scores.trend!=null)?Math.round((r.scores.trend*2-1)*100)/100:null,total_score:r.total_score,competition:r.competition})}<span class="meta">${metaTxt}</span></div>
       <div class="num col-hide">${fmt(r.search_volume)}</div>
       <div class="col-hide"><span class="comp-badge comp-${r.competition}">${r.competition}</span></div>
       <div class="col-hide" style="text-align:center;font-size:15px">${trendMark(r.scores.trend)}</div>
@@ -610,7 +613,7 @@ function renderTrending(entry){
     <li class="trend-item">
       <span class="t-rank">${i+1}</span>
       <div class="t-body">
-        <div class="t-kw">${t.keyword}${storeBtn(t.keyword)}</div>
+        <div class="t-kw">${t.keyword}${storeBtn(t.keyword)}${boardBtn(t.keyword,{search_volume:t.volume})}</div>
       </div>
       <span class="t-vol">${fmt(t.volume)}</span>
     </li>`).join('');
@@ -637,7 +640,7 @@ function renderOverall(){
     <li class="trend-item">
       <span class="t-rank">${i+1}</span>
       <div class="t-body">
-        <div class="t-kw">${r.keyword}${storeBtn(r.keyword)}</div>
+        <div class="t-kw">${r.keyword}${storeBtn(r.keyword)}${boardBtn(r.keyword,{search_volume:r.search_volume,trend_slope:(r.scores&&r.scores.trend!=null)?Math.round((r.scores.trend*2-1)*100)/100:null,total_score:r.total_score,competition:r.competition})}</div>
         <div class="t-cat">${r.cat}</div>
       </div>
       <span class="t-score">${r.total_score}</span>

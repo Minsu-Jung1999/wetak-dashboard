@@ -193,9 +193,11 @@ function cardHtml(it){
   const m=it.meta||{};
   const mg=marginOf(m);
   const parts=[];
+  if(m.total_score!=null) parts.push(`점수 <b>${m.total_score}</b>`);
   if(m.search_volume!=null) parts.push(`검색 <b>${fmt(m.search_volume)}</b>`);
   if(m.trend_slope!=null) parts.push(m.trend_slope>=0.25?'트렌드 <b style="color:var(--signal)">▲</b>':(m.trend_slope<=-0.15?'트렌드 <b style="color:var(--warn)">▼</b>':'트렌드 –'));
   if(m.sell_price) parts.push(`판매가 <b>${fmt(m.sell_price)}</b>`);
+  if(m.supply_price) parts.push(`공급 <b>${fmt(m.supply_price)}</b>`);
   if(m.coupang_price) parts.push(`쿠팡참고 <b>${fmt(m.coupang_price)}</b>`);
   if(m.wholesale) parts.push(`도매 <b>${fmt(m.wholesale)}</b>`);
   const mgTxt=mg!=null?`<div class="metrics">마진 <span class="${mg<0?'margin-neg':'margin-pos'}">${mg}%</span></div>`:'';
@@ -209,6 +211,7 @@ function cardHtml(it){
       <a class="mini cp" href="${naverUrl(it.keyword)}" target="_blank" rel="noopener">네이버↗</a>
       <a class="mini" href="${coupangUrl(it.keyword)}" target="_blank" rel="noopener">쿠팡↗</a>
       <a class="mini" href="sourcing.html?item=${encodeURIComponent(it.keyword)}">소싱처</a>
+      <button class="mini" data-price title="네이버 판매가·위탁 공급가 입력 → 마진 자동 계산 (수수료 6%)">가격</button>
       <button class="mini warn" data-del>삭제</button>
     </div>
   </div>`;
@@ -252,6 +255,21 @@ function wire(){
       if(!confirm(`"${kw}"를 보드에서 삭제할까요?`)) return;
       items=items.filter(i=>i.keyword!==kw); render();
       await removeItem(kw);
+    });
+  });
+  // 판매가·공급가 입력 → 마진 계산 (어떤 품목이든 보드에서 바로 — E29)
+  document.querySelectorAll('[data-price]').forEach(b=>{
+    b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const kw=decodeURIComponent(b.closest('.card').dataset.kw);
+      const it=itemOf(kw); it.meta=it.meta||{};
+      const sell=prompt(`"${kw}" 네이버 판매가 (원) — 네이버쇼핑에서 경쟁가 확인 후 입력:`, it.meta.sell_price??'');
+      if(sell===null) return;
+      const supply=prompt(`"${kw}" 위탁 공급가 (원) — 공급처 컨택 후 입력:`, it.meta.supply_price??'');
+      if(supply===null) return;
+      it.meta.sell_price=+sell>0?+sell:null;
+      it.meta.supply_price=+supply>0?+supply:null;
+      render(); await upsert(it);
     });
   });
   // 메모 인라인 편집
