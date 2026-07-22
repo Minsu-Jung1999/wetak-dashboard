@@ -61,6 +61,15 @@
   .calc-grid input:focus{outline:2px solid var(--signal);outline-offset:1px}
   .calc-result{font-size:15px;font-weight:800;min-width:120px}
   .calc-note{font-size:11.5px;color:var(--dim);margin-top:10px}
+  .np-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+  .np-table{width:100%;border-collapse:collapse}
+  .np-table th,.np-table td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;white-space:nowrap}
+  .np-table tr:last-child td{border-bottom:none}
+  .np-table th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+  .np-table td.tt{max-width:320px;overflow:hidden;text-overflow:ellipsis}
+  .np-table td.num{font-variant-numeric:tabular-nums}
+  .np-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#f0e9d6;color:#8a7523;vertical-align:1px}
+  .np-badge.live{background:var(--signal-soft);color:var(--signal)}
   .lnk{display:inline-block;font-size:11px;font-weight:700;color:var(--signal);border:1px solid var(--signal);border-radius:6px;padding:3px 10px;text-decoration:none;margin-right:6px}
   .lnk:hover{background:var(--signal);color:#fff}
   .lnk.dark{color:var(--ink);border-color:var(--ink)}
@@ -229,10 +238,27 @@ function trendMark(t){
   if(t<=-0.15) return '<span class="tr-dn">▼</span>';
   return '<span class="tr-fl">–</span>';
 }
+// ---- 네이버쇼핑 상위 5개 판매가 (일 1회 캐시) ----
+function npriceStore(){ try{ return JSON.parse(localStorage.getItem('wetak-nprice-v1'))||{}; }catch(e){ return {}; } }
+function npriceOf(name){ const e=npriceStore()[name]; return (e&&e.date===todayStr())?e:null; }
+function npriceSet(name, data){
+  const s=npriceStore(); s[name]={...data, date:todayStr()};
+  localStorage.setItem('wetak-nprice-v1', JSON.stringify(s));
+}
+function parseKg(title){
+  // 상품명에서 용량 추출: "3kg", "500g", "1.5㎏" → kg 단위 숫자
+  const m=/([\d.]+)\s*(kg|㎏|g)(?![a-z])/i.exec(title||'');
+  if(!m) return null;
+  const v=parseFloat(m[1]); if(!v) return null;
+  return m[2].toLowerCase()==='g'?v/1000:v;
+}
 function naverPriceOf(name){
-  // 네이버 판매가: 계산기 직접 입력 또는 북마클릿 캡처 (자동 조회 없음 — 쇼핑 검색 API 종료·크롤링 지양)
+  // 우선순위: 직접 입력/북마클릿 캡처 > 쇼핑 검색 API 1위 상품가
   const p=priceOf(name);
-  return p.sell!=null?p.sell:(p.manual!=null?p.manual:null);
+  if(p.sell!=null) return p.sell;
+  if(p.manual!=null) return p.manual;
+  const np=npriceOf(name);
+  return np&&np.items&&np.items.length?np.items[0].price:null;
 }
 function marginOf(name, wholesale){
   const p=priceOf(name);
@@ -278,7 +304,7 @@ document.addEventListener('click', e=>{
   const row=e.target.closest('.row.clickable');
   if(!row) return;
   const next=row.nextElementSibling;
-  if(next && next.classList.contains('calc-panel')){ next.remove(); return; }
+  if(next && next.classList.contains('calc-panel')){ next.remove(); renderAll(); return; }
   document.querySelectorAll('.calc-panel').forEach(p=>p.remove());
   const name=row.dataset.name;
   const list=[...seasonData.current,...seasonData.upcoming];
@@ -288,11 +314,13 @@ document.addEventListener('click', e=>{
   panel.className='calc-panel';
   panel.innerHTML=`
     <div class="calc-grid">
-      <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??naverPriceOf(name)??''}" placeholder="네이버쇼핑 확인 후 입력"></div>
-      <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" value="${p.supply??''}" placeholder="공급처 확인 후 입력"></div>
+      <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??naverPriceOf(name)??''}" placeholder="아래 표에서 자동 입력"></div>
+      <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" value="${p.supply??''}" placeholder="도매시세로 자동 추정"></div>
       <div><label>마진 (수수료 6%)</label><div class="calc-result" id="cResult">—</div></div>
     </div>
-    <div class="calc-note">도매시세 ${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'미확인'} · 소매시세 ${it.retail?fmt(it.retail)+'원/'+it.price_unit:'미확인'} — 협상 기준선으로 활용</div>
+    <div id="npWrap" style="margin-top:12px"><span class="spin"></span>네이버쇼핑 상위 5개 조회 중…</div>
+    <div class="calc-note">도매시세 ${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'미확인'} · 소매시세 ${it.retail?fmt(it.retail)+'원/'+it.price_unit:'미확인'} —
+      공급가는 도매시세×용량으로 자동 추정한 참고치입니다. 실제 위탁 공급가는 공급처 컨택으로 확정하세요.</div>
     <div style="margin-top:12px">
       <a class="lnk dark" href="${naverUrl(name)}" target="_blank" rel="noopener">네이버쇼핑에서 확인↗</a>
       <a class="lnk" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 소싱처 찾기 →</a>
@@ -324,7 +352,64 @@ document.addEventListener('click', e=>{
   });
   row.after(panel);
   recalc();
+  loadNaverPrices(name, panel, it);
 });
+
+// ---- 네이버쇼핑 상위 5개: 조회(일 1회 캐시) → 표 렌더 → 판매가·공급가 자동 입력 ----
+async function loadNaverPrices(name, panel, it){
+  let np=npriceOf(name);
+  if(!np){
+    try{
+      const res=await apiGet('/api/naver-prices?q='+encodeURIComponent(name));
+      const d=await res.json();
+      if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
+      np={items:d.items||[], mode:d.mode||'mock'};
+      npriceSet(name, np);
+    }catch(e){
+      if(e.message!=='auth'&&panel.isConnected) panel.querySelector('#npWrap').innerHTML='네이버쇼핑 조회 실패: '+e.message;
+      return;
+    }
+  }
+  if(!panel.isConnected) return; // 조회 중 패널이 닫힌 경우
+  renderNpTable(panel, np, it);
+}
+
+function renderNpTable(panel, np, it){
+  const wrap=panel.querySelector('#npWrap');
+  if(!np.items.length){ wrap.innerHTML='<span style="color:var(--dim);font-size:12px">네이버쇼핑 검색 결과 없음 — 판매가를 직접 입력하세요.</span>'; return; }
+  const modeTxt=np.mode==='live'?'실데이터':(np.mode==='no-scope'?'목업 — 네이버 앱에 검색 API 권한 필요':'목업');
+  const rows=np.items.map((x,i)=>{
+    const kg=parseKg(x.title);
+    const per=kg?Math.round(x.price/kg):null;
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="tt"><a href="${x.link}" target="_blank" rel="noopener" style="color:inherit">${x.title}</a></td>
+      <td class="num">${fmt(x.price)}원</td>
+      <td class="num">${kg?(kg<1?kg*1000+'g':kg+'kg'):'—'}</td>
+      <td class="num" style="font-weight:700">${per?fmt(per)+'원/kg':'—'}</td>
+      <td style="color:var(--dim)">${x.mall||''}</td>
+      <td><button class="lnk" style="cursor:pointer;background:none" data-usenp="${x.price}" data-kg="${kg||''}">적용</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`
+    <div style="font-weight:700;font-size:12.5px;margin-bottom:6px">네이버쇼핑 상위 ${np.items.length}개 (정확도순) <span class="np-badge ${np.mode==='live'?'live':''}">${modeTxt}</span></div>
+    <div class="np-scroll"><table class="np-table">
+      <tr><th>#</th><th>상품</th><th>판매가</th><th>용량</th><th>kg당</th><th>판매처</th><th></th></tr>${rows}
+    </table></div>`;
+  const sellIn=panel.querySelector('#cSell'), supIn=panel.querySelector('#cSupply');
+  const fill=(price,kg)=>{
+    sellIn.value=price;
+    if(kg&&it.wholesale) supIn.value=Math.round(it.wholesale*kg); // 공급가 추정 = 도매시세(원/kg)×용량
+    sellIn.dispatchEvent(new Event('input',{bubbles:true})); // recalc + 저장
+  };
+  wrap.addEventListener('click',e=>{
+    const b=e.target.closest('[data-usenp]');
+    if(b) fill(+b.dataset.usenp, parseFloat(b.dataset.kg)||null);
+  });
+  // 비어 있으면 1위 상품으로 자동 입력
+  if(!sellIn.value) fill(np.items[0].price, parseKg(np.items[0].title));
+  else if(!supIn.value){ const kg=parseKg(np.items[0].title); if(kg&&it.wholesale){ supIn.value=Math.round(it.wholesale*kg); sellIn.dispatchEvent(new Event('input',{bubbles:true})); } }
+}
 
 // ---- 북마클릿: 네이버쇼핑 검색 결과에서 최저가를 이 페이지로 전송 ----
 // (드래그해서 북마크바에 두고, 검색 결과 페이지에서 클릭. ?query= 파라미터·price_num 클래스 기준)
