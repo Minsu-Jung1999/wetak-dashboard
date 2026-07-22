@@ -337,7 +337,7 @@ function renderAll(){
 // 위탁 공급처 디렉터리 (2026-07-22 조사 — DEVLOG E33 참고)
 // A. 도매가를 바로 볼 수 있는 곳 — 품목 검색 링크 자동 생성 (search에 품목명이 들어감)
 const B2B_OPEN=[
-  {name:'도매매', search:n=>'https://domemedb.domeggook.com/index/item/supplyList.php?sw='+encodeURIComponent(n),
+  {name:'도매매', dm:true, search:n=>'https://domemedb.domeggook.com/index/item/supplyList.php?sw='+encodeURIComponent(n),
    note:'전문셀러용 B2B 배송대행(위탁 표준) — 상품별 도매 공급가 즉시 열람, 1개 단위 발주·사방넷 연동'},
   {name:'도매꾹', search:n=>'https://domeggook.com/main/item/itemList.php?sw='+encodeURIComponent(n),
    note:'묶음 도매(사입형) — 최소구매수량 단위 도매가 공개, 대량 매입 시 단가 비교용'},
@@ -404,6 +404,7 @@ function openDrawer(name){
         <div class="sup-b2b">
           <div class="s-name">${b.name} <a class="lnk" style="margin-left:6px" href="${b.search(name)}" target="_blank" rel="noopener">${name} 도매가 보기↗</a></div>
           <div class="s-meta">${b.note}</div>
+          ${b.dm?'<div id="dmWrap" style="margin-top:7px"><span class="spin"></span>도매매 공급가 조회 중…</div>':''}
         </div>`).join('')}
       <div class="sup-h">상담 후 단가 공개 — 전담 매니저형 (가입비 없음)</div>
       ${B2B_CONSULT.map(b=>`
@@ -453,7 +454,61 @@ function openDrawer(name){
   $('#drawer').classList.add('on');
   recalc();
   loadNaverPrices(name, body, it);
+  loadDomemePrices(name, body);
   loadSuppliers(name, body);
+}
+
+// ---- 도매매 공급가 상위 5건 (일 1회 캐시) ----
+async function loadDomemePrices(name, body){
+  let entry=null;
+  try{ entry=(JSON.parse(localStorage.getItem('wetak-dmprice-v1'))||{})[name]||null; }catch(e){}
+  if(entry) renderDm(body, entry.data);
+  if(entry && entry.date===todayStr()) return;
+  try{
+    const res=await apiGet('/api/domeme-prices?q='+encodeURIComponent(name));
+    const d=await res.json();
+    if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
+    let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-dmprice-v1'))||{}; }catch(e){}
+    s[name]={date:todayStr(), data:d};
+    try{ localStorage.setItem('wetak-dmprice-v1', JSON.stringify(s)); }catch(e){}
+    if(drawerItem===name) renderDm(body, d);
+  }catch(e){
+    if(e.message!=='auth'&&drawerItem===name&&!entry){
+      const w=body.querySelector('#dmWrap');
+      if(w) w.innerHTML='<span class="s-meta">도매매 조회 실패 — "도매가 보기↗"로 직접 확인하세요.</span>';
+    }
+  }
+}
+function renderDm(body, dm){
+  const wrap=body.querySelector('#dmWrap');
+  if(!wrap) return;
+  if(!dm.items||!dm.items.length){ wrap.innerHTML='<span class="s-meta">도매매 검색 결과 없음</span>'; return; }
+  const modeTxt=dm.mode==='live'?'실데이터':'목업';
+  const rows=dm.items.map((x,i)=>{
+    const kg=parseKg(x.title);
+    const total=x.price+(x.deli_fee||0);
+    const per=kg?Math.round(total/kg):null;
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="tt"><a href="${x.url}" target="_blank" rel="noopener" style="color:inherit">${x.title}</a></td>
+      <td class="num">${fmt(x.price)}원</td>
+      <td class="num">${x.deli_fee?fmt(x.deli_fee)+'원':'무료'}</td>
+      <td class="num" style="font-weight:700">${per?fmt(per)+'원/kg':'—'}</td>
+      <td><button class="lnk" style="cursor:pointer;background:none" data-usedm="${total}" title="배송비 포함 총원가를 ③ 공급가에 입력">공급가 적용</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`
+    <div style="font-size:11.5px;color:var(--dim);margin:2px 0 5px">매칭 ${fmt(dm.matched)}건 · 배송비 포함 총원가 낮은 순 5건 <span class="np-badge ${dm.mode==='live'?'live':''}">${modeTxt}</span></div>
+    <div class="np-scroll"><table class="np-table">
+      <tr><th>#</th><th>상품</th><th>공급가</th><th>배송비</th><th>kg당(총원가)</th><th></th></tr>${rows}
+    </table></div>`;
+  wrap.addEventListener('click',e=>{
+    const b=e.target.closest('[data-usedm]');
+    if(!b) return;
+    const supIn=body.querySelector('#cSupply');
+    supIn.value=+b.dataset.usedm;
+    supIn.dispatchEvent(new Event('input',{bubbles:true})); // ③ 마진 재계산 + 저장
+  });
 }
 
 // ---- 산지 후보 (우체국·GAP·법인) — sourcing.html과 같은 일 1회 캐시(wetak-suppliers-v2) 공유 ----
