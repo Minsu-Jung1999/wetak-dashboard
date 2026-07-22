@@ -27,7 +27,7 @@
   .search-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .search-bar input{flex:1;min-width:200px;padding:13px 15px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper-2);color:var(--ink)}
   .search-bar input:focus{outline:2px solid var(--signal);outline-offset:1px}
-  .search-bar button{background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:14px;padding:13px 26px;border-radius:10px}
+  #searchBtn{background:var(--ink);color:var(--hi);border:none;cursor:pointer;font-weight:800;font-size:14px;padding:13px 26px;border-radius:10px}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .chip{background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px}
   .chip:hover{border-color:var(--ink);color:var(--ink)}
@@ -113,6 +113,7 @@
     <div class="search-bar">
       <input type="text" id="itemInput" placeholder="품목명 입력 (예: 감자, 복숭아, 샤인머스캣)">
       <button id="searchBtn">공급처 찾기</button>
+      <button id="forceBtn" class="chip" title="오늘 캐시를 무시하고 다시 조회">새로 조회</button>
     </div>
     <div class="chips" id="chips"></div>
 
@@ -215,8 +216,7 @@ document.addEventListener('change', e=>{
 function cacheGet(item){
   try{
     const s=JSON.parse(localStorage.getItem('wetak-suppliers-v2'))||{};
-    const e=s[item];
-    return (e && e.date===todayStr()) ? e.data : null;
+    return s[item]||null; // {date, data} — 날짜가 지나도 일단 반환 (화면 먼저, 갱신은 뒤에서)
   }catch(err){ return null; }
 }
 function cacheSet(item, data){
@@ -232,10 +232,13 @@ async function search(item, force=false){
   $('#placeholder').style.display='none';
   $('#results').style.display='';
   const cached=cacheGet(item);
-  if(cached && !force){ render(cached); return; }
-  $('#epostBody').innerHTML='<div class="empty"><span class="spin"></span>우체국쇼핑을 검색하고 있습니다…</div>';
-  $('#gapBody').innerHTML='<div class="empty">대기 중…</div>';
-  $('#localBody').innerHTML='<div class="empty">대기 중…</div>';
+  if(cached) render(cached.data); // 캐시가 있으면 즉시 표시 (어제 것이라도)
+  if(cached && cached.date===todayStr() && !force) return; // 오늘 조회분이면 끝
+  if(!cached){
+    $('#epostBody').innerHTML='<div class="empty"><span class="spin"></span>우체국쇼핑을 검색하고 있습니다…</div>';
+    $('#gapBody').innerHTML='<div class="empty">대기 중…</div>';
+    $('#localBody').innerHTML='<div class="empty">대기 중…</div>';
+  }
   try{
     const res=await apiGet('/api/suppliers?item='+encodeURIComponent(item));
     const d=await res.json();
@@ -243,7 +246,7 @@ async function search(item, force=false){
     cacheSet(item, d);
     render(d);
   }catch(e){
-    if(e.message!=='auth') $('#epostBody').innerHTML=`<div class="empty">조회 실패: ${e.message}</div>`;
+    if(e.message!=='auth' && !cached) $('#epostBody').innerHTML=`<div class="empty">조회 실패: ${e.message}</div>`;
   }
 }
 
@@ -290,14 +293,15 @@ function render(d){
     </div>`).join('')).join('')||'<div class="empty">데이터 없음</div>';
 }
 
-$('#searchBtn').addEventListener('click',()=>search($('#itemInput').value, true));
-$('#itemInput').addEventListener('keydown',e=>{ if(e.key==='Enter') search($('#itemInput').value, true); });
+$('#searchBtn').addEventListener('click',()=>search($('#itemInput').value));
+$('#itemInput').addEventListener('keydown',e=>{ if(e.key==='Enter') search($('#itemInput').value); });
+$('#forceBtn').addEventListener('click',()=>search($('#itemInput').value, true));
 $('#chips').innerHTML=QUICK_ITEMS.map(c=>`<button class="chip" data-c="${c}">${c}</button>`).join('');
-$('#chips').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) search(b.dataset.c, true); });
+$('#chips').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) search(b.dataset.c); });
 
 function boot(){
   const item=new URLSearchParams(location.search).get('item');
-  if(item) search(item, true);
+  if(item) search(item);
 }
 </script>
 </body>

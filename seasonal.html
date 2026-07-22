@@ -199,9 +199,14 @@ function priceSet(name, patch){
 async function loadSeasonal(force=false){
   let cached=null;
   try{ cached=JSON.parse(localStorage.getItem('wetak-seasonal-v1')); }catch(e){}
-  if(cached && cached.date===todayStr() && !force){ seasonData=cached.data; renderAll(); fetchCoupangPrices(); return; }
-  $('#curBody').innerHTML='<div class="empty"><span class="spin"></span>검색량·트렌드·시세를 조회하고 있습니다… (수십 초 걸릴 수 있음)</div>';
-  $('#nextBody').innerHTML='<div class="empty">대기 중…</div>';
+  if(cached){ seasonData=cached.data; renderAll(); } // 캐시가 있으면 즉시 표시 (어제 것이라도)
+  if(cached && cached.date===todayStr() && !force){ fetchCoupangPrices(); return; } // 오늘 조회분이면 끝
+  const btn=$('#reloadBtn');
+  if(cached){ btn.disabled=true; btn.textContent='갱신 중…'; } // 화면은 유지, 뒤에서 갱신
+  else{
+    $('#curBody').innerHTML='<div class="empty"><span class="spin"></span>검색량·트렌드·시세를 조회하고 있습니다… (수십 초 걸릴 수 있음)</div>';
+    $('#nextBody').innerHTML='<div class="empty">대기 중…</div>';
+  }
   try{
     const res=await apiGet('/api/seasonal');
     const d=await res.json();
@@ -211,7 +216,9 @@ async function loadSeasonal(force=false){
     renderAll();
     fetchCoupangPrices();
   }catch(e){
-    if(e.message!=='auth') $('#curBody').innerHTML=`<div class="empty">조회 실패: ${e.message}</div>`;
+    if(e.message!=='auth' && !cached) $('#curBody').innerHTML=`<div class="empty">조회 실패: ${e.message}</div>`;
+  }finally{
+    btn.disabled=false; btn.textContent='새로 조회';
   }
 }
 $('#reloadBtn').addEventListener('click',()=>loadSeasonal(true));
@@ -238,6 +245,8 @@ $('#pasteBtn').addEventListener('click',async ()=>{
 let coupangBlocked=false;
 async function fetchCoupangPrices(){
   if(!seasonData) return;
+  if(localStorage.getItem('wetak-cprice-run')===todayStr()) return; // 자동 조회도 일 1회만
+  localStorage.setItem('wetak-cprice-run', todayStr());
   const items=[...seasonData.current, ...seasonData.upcoming];
   for(const it of items){
     const p=priceOf(it.name);
