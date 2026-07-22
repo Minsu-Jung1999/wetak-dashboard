@@ -274,11 +274,11 @@ function trendMark(t){
   return '<span class="tr-fl">–</span>';
 }
 // ---- 네이버쇼핑 상위 5개 판매가 (일 1회 캐시) ----
-function npriceStore(){ try{ return JSON.parse(localStorage.getItem('wetak-nprice-v1'))||{}; }catch(e){ return {}; } }
+function npriceStore(){ try{ return JSON.parse(localStorage.getItem('wetak-nprice-v2'))||{}; }catch(e){ return {}; } }
 function npriceOf(name){ const e=npriceStore()[name]; return (e&&e.date===todayStr())?e:null; }
 function npriceSet(name, data){
   const s=npriceStore(); s[name]={...data, date:todayStr()};
-  localStorage.setItem('wetak-nprice-v1', JSON.stringify(s));
+  localStorage.setItem('wetak-nprice-v2', JSON.stringify(s));
 }
 function parseKg(title){
   // 상품명에서 용량 추출: "3kg", "500g", "1.5㎏" → kg 단위 숫자
@@ -461,16 +461,16 @@ function openDrawer(name){
 // ---- 도매매 공급가 상위 5건 (일 1회 캐시) ----
 async function loadDomemePrices(name, body){
   let entry=null;
-  try{ entry=(JSON.parse(localStorage.getItem('wetak-dmprice-v1'))||{})[name]||null; }catch(e){}
+  try{ entry=(JSON.parse(localStorage.getItem('wetak-dmprice-v2'))||{})[name]||null; }catch(e){}
   if(entry) renderDm(body, entry.data);
   if(entry && entry.date===todayStr()) return;
   try{
     const res=await apiGet('/api/domeme-prices?q='+encodeURIComponent(name));
     const d=await res.json();
     if(!res.ok||d.error) throw new Error(d.error||('HTTP '+res.status));
-    let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-dmprice-v1'))||{}; }catch(e){}
+    let s={}; try{ s=JSON.parse(localStorage.getItem('wetak-dmprice-v2'))||{}; }catch(e){}
     s[name]={date:todayStr(), data:d};
-    try{ localStorage.setItem('wetak-dmprice-v1', JSON.stringify(s)); }catch(e){}
+    try{ localStorage.setItem('wetak-dmprice-v2', JSON.stringify(s)); }catch(e){}
     if(drawerItem===name) renderDm(body, d);
   }catch(e){
     if(e.message!=='auth'&&drawerItem===name&&!entry){
