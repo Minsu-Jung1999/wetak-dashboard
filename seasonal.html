@@ -124,8 +124,8 @@
     <div class="sec-h">
       <h2>지금 제철 — <em id="curMonth"></em>월</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="act-btn" id="pasteBtn" title="tools/coupang_prices.py로 수집한 JSON을 붙여넣어 쿠팡 최저가를 일괄 반영">쿠팡가 붙여넣기</button>
-        <a id="bmk" href="#" style="color:var(--signal);font-weight:700;font-size:12px" title="이 링크를 북마크바로 드래그해 두고 쿠팡 검색 결과에서 누르면 최저가가 자동 입력됩니다">📌 북마클릿</a>
+        <button class="act-btn" id="pasteBtn" title="tools/coupang_prices.py로 수집한 JSON을 붙여넣어 쿠팡 참고가를 일괄 반영">쿠팡가 붙여넣기</button>
+        <a id="bmk" href="#" style="color:var(--signal);font-weight:700;font-size:12px" title="이 링크를 북마크바로 드래그해 두고 네이버쇼핑·쿠팡 검색 결과에서 누르면 최저가가 자동 입력됩니다">📌 북마클릿</a>
       </div>
     </div>
     <div class="card"><div id="curBody"><div class="empty"><span class="spin"></span>불러오는 중…</div></div></div>
@@ -137,18 +137,19 @@
     <div class="card"><div id="nextBody"><div class="empty">불러오는 중…</div></div></div>
   </div>
 
-  <div class="foot">도매시세(KAMIS)는 공급가 협상 기준선입니다 — 실제 위탁 공급가는 공급처 컨택으로 확정하세요. 쿠팡 수수료 10.8% 기준.</div>
+  <div class="foot">도매시세(KAMIS)는 공급가 협상 기준선입니다 — 실제 위탁 공급가는 공급처 컨택으로 확정하세요. 네이버 스마트스토어 수수료 약 6%(결제 3.63%+쇼핑연동 2%, 보수 반올림) 기준 · 쿠팡가는 타채널 참고용.</div>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
 const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
 const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
-const COUPANG_FEE = 0.108;
+const NAVER_FEE = 0.06; // 스마트스토어 결제 3.63% + 쇼핑연동 2% ≈ 5.63% → 보수적으로 6% (main.py score_margin과 동일)
 
 function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
 function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
 function todayStr(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function naverUrl(kw){ return 'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(kw); }
 function coupangUrl(kw){ return 'https://www.coupang.com/np/search?q='+encodeURIComponent(kw); }
 
 async function apiGet(path){
@@ -277,7 +278,7 @@ function marginOf(name, wholesale){
   const p=priceOf(name);
   const sell=p.sell!=null?p.sell:coupangPriceOf(name);
   const supply=p.supply!=null?p.supply:null;
-  if(sell&&supply) return Math.round((sell*(1-COUPANG_FEE)-supply)/sell*1000)/10;
+  if(sell&&supply) return Math.round((sell*(1-NAVER_FEE)-supply)/sell*1000)/10;
   return null;
 }
 
@@ -286,7 +287,7 @@ function renderSection(list, elId){
   const sorted=[...list].sort((a,b)=>(b.trend_slope??-9)-(a.trend_slope??-9));
   let html=`<div class="row head">
     <div>품목</div><div class="col-hide">월 검색량</div><div class="col-hide">경쟁</div><div>트렌드</div>
-    <div class="col-hide">도매시세</div><div class="col-hide">쿠팡 최저가</div><div class="col-hide">내 마진</div></div>`;
+    <div class="col-hide">도매시세</div><div class="col-hide">쿠팡가(참고)</div><div class="col-hide">내 마진</div></div>`;
   sorted.forEach((it,i)=>{
     const cp=coupangPriceOf(it.name);
     const mg=marginOf(it.name, it.wholesale);
@@ -327,13 +328,14 @@ document.addEventListener('click', e=>{
   panel.className='calc-panel';
   panel.innerHTML=`
     <div class="calc-grid">
-      <div><label>쿠팡 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??coupangPriceOf(name)??''}" placeholder="쿠팡 확인 후 입력"></div>
+      <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??coupangPriceOf(name)??''}" placeholder="네이버쇼핑 확인 후 입력"></div>
       <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" value="${p.supply??''}" placeholder="공급처 확인 후 입력"></div>
-      <div><label>마진 (수수료 10.8%)</label><div class="calc-result" id="cResult">—</div></div>
+      <div><label>마진 (수수료 6%)</label><div class="calc-result" id="cResult">—</div></div>
     </div>
     <div class="calc-note">도매시세 ${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'미확인'} · 소매시세 ${it.retail?fmt(it.retail)+'원/'+it.price_unit:'미확인'} — 협상 기준선으로 활용</div>
     <div style="margin-top:12px">
-      <a class="lnk dark" href="${coupangUrl(name)}" target="_blank" rel="noopener">쿠팡에서 확인↗</a>
+      <a class="lnk dark" href="${naverUrl(name)}" target="_blank" rel="noopener">네이버쇼핑에서 확인↗</a>
+      <a class="lnk" href="${coupangUrl(name)}" target="_blank" rel="noopener">쿠팡 참고↗</a>
       <a class="lnk" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 소싱처 찾기 →</a>
       <button class="lnk" style="cursor:pointer;background:none" id="toBoard">＋ 운영 보드에 담기</button>
     </div>`;
@@ -343,7 +345,7 @@ document.addEventListener('click', e=>{
     priceSet(name,{sell:sell,supply:supply,manual:sell});
     const el=panel.querySelector('#cResult');
     if(sell&&supply){
-      const net=sell*(1-COUPANG_FEE)-supply;
+      const net=sell*(1-NAVER_FEE)-supply;
       const mg=Math.round(net/sell*1000)/10;
       el.innerHTML=`<span class="${mg<0?'margin-neg':'margin-val'}">${mg}%</span> <span style="font-size:12px;color:var(--dim)">(개당 ${fmt(Math.round(net))}원)</span>`;
     }else el.textContent='—';
@@ -356,7 +358,7 @@ document.addEventListener('click', e=>{
     const meta={
       search_volume:it.search_volume, trend_slope:it.trend_slope,
       coupang_price:coupangPriceOf(name), wholesale:it.wholesale,
-      supply_price:pp.supply??null,
+      supply_price:pp.supply??null, sell_price:pp.sell??null,
     };
     const b64=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
     location.href=`board.html?add=${encodeURIComponent(name)}&type=${encodeURIComponent(it.type)}&meta=${encodeURIComponent(b64)}`;
@@ -365,17 +367,17 @@ document.addEventListener('click', e=>{
   recalc();
 });
 
-// ---- 북마클릿: 쿠팡 검색 결과에서 최저가를 이 페이지로 전송 ----
-// (드래그해서 북마크바에 두고, 쿠팡 검색 페이지에서 클릭)
+// ---- 북마클릿: 네이버쇼핑·쿠팡 검색 결과에서 최저가를 이 페이지로 전송 ----
+// (드래그해서 북마크바에 두고, 검색 결과 페이지에서 클릭. 네이버는 ?query=, 쿠팡은 ?q=)
 (function(){
-  const code=`(function(){var q=new URLSearchParams(location.search).get('q')||'';`+
-    `var ps=[];document.querySelectorAll('.price-value').forEach(function(e){`+
+  const code=`(function(){var sp=new URLSearchParams(location.search);var q=sp.get('query')||sp.get('q')||'';`+
+    `var ps=[];document.querySelectorAll('.price-value,[class*="price_num"]').forEach(function(e){`+
     `var n=parseInt(e.textContent.replace(/[^0-9]/g,''));if(n>=1000)ps.push(n)});`+
-    `if(!ps.length){alert('가격을 찾지 못했습니다. 쿠팡 검색 결과 페이지에서 눌러주세요.');return}`+
+    `if(!ps.length){alert('가격을 찾지 못했습니다. 네이버쇼핑 또는 쿠팡 검색 결과 페이지에서 눌러주세요.');return}`+
     `var m=Math.min.apply(null,ps);`+
     `window.open('${location.origin}${location.pathname.replace(/[^/]*$/,'')}seasonal.html?cpk='+encodeURIComponent(q)+'&cpv='+m,'_blank')})();`;
   $('#bmk').setAttribute('href','javascript:'+encodeURIComponent(code));
-  $('#bmk').addEventListener('click',e=>{ e.preventDefault(); alert('클릭이 아니라, 이 링크를 브라우저 북마크바로 드래그해서 저장한 뒤 쿠팡 검색 결과 페이지에서 눌러주세요.'); });
+  $('#bmk').addEventListener('click',e=>{ e.preventDefault(); alert('클릭이 아니라, 이 링크를 브라우저 북마크바로 드래그해서 저장한 뒤 네이버쇼핑·쿠팡 검색 결과 페이지에서 눌러주세요.'); });
 })();
 
 // 북마클릿에서 전달된 가격 반영 (?cpk=키워드&cpv=가격)

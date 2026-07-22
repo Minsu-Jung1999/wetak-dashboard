@@ -125,10 +125,11 @@ const $ = s => document.querySelector(s);
 const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
 const API = LOCAL ? '' : 'https://psrwoakxiomlxubxmcyr.supabase.co/functions/v1/scorer';
 const STAGES = ['관심','소싱중','등록완료','보류'];
-const COUPANG_FEE = 0.108;
+const NAVER_FEE = 0.06; // 스마트스토어 결제 3.63% + 쇼핑연동 2% ≈ 5.63% → 보수적으로 6%
 
 function fmt(n){ return Number(n).toLocaleString('ko-KR'); }
 function gateKeyVal(){ return localStorage.getItem('gateKey')||''; }
+function naverUrl(kw){ return 'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(kw); }
 function coupangUrl(kw){ return 'https://www.coupang.com/np/search?q='+encodeURIComponent(kw); }
 
 async function apiFetch(path, opt={}){
@@ -182,8 +183,9 @@ async function removeItem(kw){
 
 function marginOf(m){
   if(!m) return null;
-  const sell=m.coupang_price, supply=m.supply_price??m.wholesale;
-  if(sell&&supply) return Math.round((sell*(1-COUPANG_FEE)-supply)/sell*1000)/10;
+  // 판매가: 직접 입력한 네이버 판매가 우선, 없으면 쿠팡 수집가를 참고치로 사용
+  const sell=m.sell_price??m.coupang_price, supply=m.supply_price??m.wholesale;
+  if(sell&&supply) return Math.round((sell*(1-NAVER_FEE)-supply)/sell*1000)/10;
   return null;
 }
 
@@ -193,7 +195,8 @@ function cardHtml(it){
   const parts=[];
   if(m.search_volume!=null) parts.push(`검색 <b>${fmt(m.search_volume)}</b>`);
   if(m.trend_slope!=null) parts.push(m.trend_slope>=0.25?'트렌드 <b style="color:var(--signal)">▲</b>':(m.trend_slope<=-0.15?'트렌드 <b style="color:var(--warn)">▼</b>':'트렌드 –'));
-  if(m.coupang_price) parts.push(`쿠팡 <b>${fmt(m.coupang_price)}</b>`);
+  if(m.sell_price) parts.push(`판매가 <b>${fmt(m.sell_price)}</b>`);
+  if(m.coupang_price) parts.push(`쿠팡참고 <b>${fmt(m.coupang_price)}</b>`);
   if(m.wholesale) parts.push(`도매 <b>${fmt(m.wholesale)}</b>`);
   const mgTxt=mg!=null?`<div class="metrics">마진 <span class="${mg<0?'margin-neg':'margin-pos'}">${mg}%</span></div>`:'';
   const type=it.type||'기타';
@@ -203,7 +206,8 @@ function cardHtml(it){
     ${mgTxt}
     <div class="note" data-note>${it.note?it.note:'<span style="color:var(--dim)">메모 추가하려면 클릭</span>'}</div>
     <div class="acts">
-      <a class="mini cp" href="${coupangUrl(it.keyword)}" target="_blank" rel="noopener">쿠팡↗</a>
+      <a class="mini cp" href="${naverUrl(it.keyword)}" target="_blank" rel="noopener">네이버↗</a>
+      <a class="mini" href="${coupangUrl(it.keyword)}" target="_blank" rel="noopener">쿠팡↗</a>
       <a class="mini" href="sourcing.html?item=${encodeURIComponent(it.keyword)}">소싱처</a>
       <button class="mini warn" data-del>삭제</button>
     </div>
