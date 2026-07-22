@@ -70,6 +70,28 @@
   .np-table td.num{font-variant-numeric:tabular-nums}
   .np-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#f0e9d6;color:#8a7523;vertical-align:1px}
   .np-badge.live{background:var(--signal-soft);color:var(--signal)}
+
+  /* 우측 리서치 패널 */
+  .dback{position:fixed;inset:0;background:rgba(18,19,15,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:60}
+  .dback.on{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(540px,94vw);background:var(--paper);border-left:2px solid var(--ink);z-index:61;transform:translateX(103%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(18,19,15,.15)}
+  .drawer.on{transform:none}
+  .d-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:2px solid var(--ink);flex-shrink:0}
+  .d-title{font-weight:800;font-size:18px}
+  .d-close{background:none;border:1px solid var(--line);border-radius:8px;font-size:14px;cursor:pointer;padding:4px 11px;color:var(--dim)}
+  .d-close:hover{border-color:var(--ink);color:var(--ink)}
+  .d-body{overflow-y:auto;padding:18px 20px 46px;flex:1}
+  .d-sec{margin-bottom:24px}
+  .d-sec h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:800;margin-bottom:9px;border-bottom:1px solid var(--line);padding-bottom:5px}
+  .d-kv{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12.5px;color:var(--dim)}
+  .d-kv b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .sup-b2b{padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .sup-b2b:last-child{border-bottom:none}
+  .sup-b2b .s-name{font-weight:700}
+  .sup-b2b .s-name a{color:var(--ink);text-decoration:none}
+  .sup-b2b .s-name a:hover{color:var(--signal)}
+  .sup-b2b .s-meta{font-size:11.5px;color:var(--dim);margin-top:1px}
+  .sup-b2b .s-contact{font-size:11.5px;color:var(--signal);font-weight:700;margin-top:1px}
   .lnk{display:inline-block;font-size:11px;font-weight:700;color:var(--signal);border:1px solid var(--signal);border-radius:6px;padding:3px 10px;text-decoration:none;margin-right:6px}
   .lnk:hover{background:var(--signal);color:#fff}
   .lnk.dark{color:var(--ink);border-color:var(--ink)}
@@ -149,6 +171,15 @@
 
   <div class="foot">도매시세(KAMIS)는 공급가 협상 기준선입니다 — 실제 위탁 공급가는 공급처 컨택으로 확정하세요. 네이버 스마트스토어 수수료 약 6%(결제 3.63%+쇼핑연동 2%, 보수 반올림) 기준.</div>
 </div>
+
+<div id="dback" class="dback"></div>
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="d-head">
+    <div class="d-title" id="dTitle"></div>
+    <button class="d-close" id="dClose">✕ 닫기</button>
+  </div>
+  <div class="d-body" id="dBody"></div>
+</aside>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -298,49 +329,95 @@ function renderAll(){
   renderSection(seasonData.upcoming,'nextBody');
 }
 
-// ---- 행 클릭 → 마진 계산기 패널 ----
-document.addEventListener('click', e=>{
-  if(e.target.closest('a')||e.target.closest('.calc-panel')) return;
-  const row=e.target.closest('.row.clickable');
-  if(!row) return;
-  const next=row.nextElementSibling;
-  if(next && next.classList.contains('calc-panel')){ next.remove(); renderAll(); return; }
-  document.querySelectorAll('.calc-panel').forEach(p=>p.remove());
-  const name=row.dataset.name;
+// ---- 행 클릭 → 우측 리서치 패널: ① 판매가 → ② 도매 기준선 → ③ 마진 → ④ 공급처 ----
+// 위탁 B2B 플랫폼 디렉터리 (2026-07-22 조사 — DEVLOG E33 참고)
+const B2B_PLATFORMS=[
+  {name:'바롬농수산', url:'http://barom.kr/',
+   note:'경락가+최소마진 공급 · 가입비/월회비 없음 · CJ대한통운 당일출고 · 품질 클레임 100% 업체 부담 · 위약금 없이 중단 가능',
+   contact:'☎ 010-8498-2893 · 카톡 @바롬농수산 · info@baromfarm.co.kr'},
+  {name:'에코앤팜', url:'https://econfarm.co.kr/',
+   note:'과일 전문 위탁 — 사입·디자인·물류비 0원 · 포장·배송·CS·반품 대행 · 당일 발송률 99% · 셀러 교육 지원',
+   contact:'☎ 010-7149-6861 · main@econfarm.co.kr'},
+  {name:'행운프레시', url:'https://luckyfresh.co.kr/', note:'과일 위탁판매 B2B · 자동발주 시스템', contact:''},
+  {name:'KAFB2B 온라인도매시장', url:'https://kafb2b.or.kr/', note:'공공(aT) 농수산물 온라인 도매시장 — 판매수수료 0 · 사업자 필요', contact:''},
+  {name:'도매매 (도매꾹 B2B)', url:'https://domemedb.domeggook.com/', note:'범용 배송대행 B2B — 공산품 포함, API 연동 가능(M3)', contact:''},
+];
+
+let drawerItem=null;
+function openDrawer(name){
   const list=[...seasonData.current,...seasonData.upcoming];
   const it=list.find(x=>x.name===name);
+  if(!it) return;
+  drawerItem=name;
   const p=priceOf(name);
-  const panel=document.createElement('div');
-  panel.className='calc-panel';
-  panel.innerHTML=`
-    <div class="calc-grid">
-      <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??naverPriceOf(name)??''}" placeholder="아래 표에서 자동 입력"></div>
-      <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" value="${p.supply??''}" placeholder="도매시세로 자동 추정"></div>
-      <div><label>마진 (수수료 6%)</label><div class="calc-result" id="cResult">—</div></div>
+  $('#dTitle').innerHTML=`${name}<span class="type-badge type-${it.type}">${it.type}</span>`;
+  $('#dBody').innerHTML=`
+    <div class="d-sec">
+      <div class="d-kv">
+        <span>월 검색량 <b>${it.search_volume!=null?fmt(it.search_volume):'—'}</b></span>
+        <span>경쟁 ${it.competition?`<span class="comp-badge comp-${it.competition}">${it.competition}</span>`:'—'}</span>
+        <span>트렌드 ${trendMark(it.trend_slope)}</span>
+        <span>주산지 <b>${it.origins.join('·')}</b></span>
+      </div>
     </div>
-    <div id="npWrap" style="margin-top:12px"><span class="spin"></span>네이버쇼핑 상위 5개 조회 중…</div>
-    <div class="calc-note">도매시세 ${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'미확인'} · 소매시세 ${it.retail?fmt(it.retail)+'원/'+it.price_unit:'미확인'} —
-      공급가는 도매시세×용량으로 자동 추정한 참고치입니다. 실제 위탁 공급가는 공급처 컨택으로 확정하세요.</div>
-    <div style="margin-top:12px">
+    <div class="d-sec">
+      <h3>① 네이버쇼핑 판매가 — 상위 5개</h3>
+      <div id="npWrap"><span class="spin"></span>네이버쇼핑 상위 5개 조회 중…</div>
+    </div>
+    <div class="d-sec">
+      <h3>② 도매 기준선 — 내가 사와야 할 가격대</h3>
+      <div class="d-kv" style="margin-bottom:9px">
+        <span>KAMIS 도매 <b>${it.wholesale?fmt(it.wholesale)+'원/'+it.price_unit:'—'}</b></span>
+        <span>KAMIS 소매 <b>${it.retail?fmt(it.retail)+'원/'+it.price_unit:'—'}</b></span>
+      </div>
+      <a class="lnk" href="https://www.garakprice.com/" target="_blank" rel="noopener">가락시장 경락시세↗</a>
+      <a class="lnk" href="https://www.kamis.or.kr/customer/price/wholesale/garak.do" target="_blank" rel="noopener">KAMIS 도매가격↗</a>
+    </div>
+    <div class="d-sec">
+      <h3>③ 마진 계산 — 수수료 6%</h3>
+      <div class="calc-grid">
+        <div><label>네이버 판매가 (원)</label><input type="number" id="cSell" value="${p.sell??naverPriceOf(name)??''}" placeholder="① 표에서 자동 입력"></div>
+        <div><label>위탁 공급가 (원)</label><input type="number" id="cSupply" value="${p.supply??''}" placeholder="도매시세로 자동 추정"></div>
+        <div><label>마진</label><div class="calc-result" id="cResult">—</div></div>
+      </div>
+      <div class="calc-note" id="cGuide"></div>
+      <div class="calc-note">공급가는 도매시세×용량 자동 추정 참고치 — 실제 위탁가는 ④ 공급처 컨택으로 확정하세요.</div>
+    </div>
+    <div class="d-sec">
+      <h3>④ 위탁 공급처 후보 — 컨택 리스트</h3>
+      ${B2B_PLATFORMS.map(b=>`
+        <div class="sup-b2b">
+          <div class="s-name"><a href="${b.url}" target="_blank" rel="noopener">${b.name}↗</a></div>
+          <div class="s-meta">${b.note}</div>
+          ${b.contact?`<div class="s-contact">${b.contact}</div>`:''}
+        </div>`).join('')}
+      <div style="margin-top:11px">
+        <a class="lnk dark" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 산지 소싱처 (우체국·GAP·주산지 법인) →</a>
+      </div>
+    </div>
+    <div class="d-sec">
       <a class="lnk dark" href="${naverUrl(name)}" target="_blank" rel="noopener">네이버쇼핑에서 확인↗</a>
-      <a class="lnk" href="sourcing.html?item=${encodeURIComponent(name)}">이 품목 소싱처 찾기 →</a>
       <button class="lnk" style="cursor:pointer;background:none" id="toBoard">＋ 운영 보드에 담기</button>
     </div>`;
+  const body=$('#dBody');
   const recalc=()=>{
-    const sell=+panel.querySelector('#cSell').value||null;
-    const supply=+panel.querySelector('#cSupply').value||null;
+    const sell=+body.querySelector('#cSell').value||null;
+    const supply=+body.querySelector('#cSupply').value||null;
     priceSet(name,{sell:sell,supply:supply,manual:sell});
-    const el=panel.querySelector('#cResult');
+    const el=body.querySelector('#cResult');
     if(sell&&supply){
       const net=sell*(1-NAVER_FEE)-supply;
       const mg=Math.round(net/sell*1000)/10;
       el.innerHTML=`<span class="${mg<0?'margin-neg':'margin-val'}">${mg}%</span> <span style="font-size:12px;color:var(--dim)">(개당 ${fmt(Math.round(net))}원)</span>`;
     }else el.textContent='—';
-    // 테이블 갱신은 패널 닫을 때
+    const g=body.querySelector('#cGuide');
+    if(sell){
+      // 마진 m% 확보 조건: 공급가 ≤ 판매가×(0.94−m)
+      g.innerHTML=`협상 가이드 — 마진 20%: 공급가 ≤ <b>${fmt(Math.round(sell*0.74))}원</b> · 15%: ≤ <b>${fmt(Math.round(sell*0.79))}원</b> · <span style="color:var(--warn)">5% 미만(패스): ${fmt(Math.round(sell*0.89))}원 초과</span>`;
+    }else g.textContent='';
   };
-  panel.addEventListener('input',recalc);
-  // 운영 보드에 담기 (현재 스냅샷을 meta로 전달)
-  panel.querySelector('#toBoard').addEventListener('click',()=>{
+  body.oninput=recalc; // addEventListener 대신 속성 할당 — 패널 재오픈 시 핸들러 중복 방지
+  body.querySelector('#toBoard').addEventListener('click',()=>{
     const pp=priceOf(name);
     const meta={
       search_volume:it.search_volume, trend_slope:it.trend_slope,
@@ -350,9 +427,22 @@ document.addEventListener('click', e=>{
     const b64=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
     location.href=`board.html?add=${encodeURIComponent(name)}&type=${encodeURIComponent(it.type)}&meta=${encodeURIComponent(b64)}`;
   });
-  row.after(panel);
+  $('#drawer').classList.add('on'); $('#dback').classList.add('on');
   recalc();
-  loadNaverPrices(name, panel, it);
+  loadNaverPrices(name, body, it);
+}
+function closeDrawer(){
+  drawerItem=null;
+  $('#drawer').classList.remove('on'); $('#dback').classList.remove('on');
+  renderAll(); // 패널에서 입력한 판매가·공급가를 테이블에 반영
+}
+$('#dClose').addEventListener('click',closeDrawer);
+$('#dback').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&drawerItem) closeDrawer(); });
+document.addEventListener('click', e=>{
+  if(e.target.closest('a')) return;
+  const row=e.target.closest('.row.clickable');
+  if(row) openDrawer(row.dataset.name);
 });
 
 // ---- 네이버쇼핑 상위 5개: 조회(일 1회 캐시) → 표 렌더 → 판매가·공급가 자동 입력 ----
@@ -366,11 +456,11 @@ async function loadNaverPrices(name, panel, it){
       np={items:d.items||[], mode:d.mode||'mock'};
       npriceSet(name, np);
     }catch(e){
-      if(e.message!=='auth'&&panel.isConnected) panel.querySelector('#npWrap').innerHTML='네이버쇼핑 조회 실패: '+e.message;
+      if(e.message!=='auth'&&drawerItem===name) panel.querySelector('#npWrap').innerHTML='네이버쇼핑 조회 실패: '+e.message;
       return;
     }
   }
-  if(!panel.isConnected) return; // 조회 중 패널이 닫힌 경우
+  if(drawerItem!==name) return; // 조회 중 패널이 닫혔거나 다른 품목으로 바뀐 경우
   renderNpTable(panel, np, it);
 }
 
