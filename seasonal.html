@@ -71,11 +71,11 @@
   .np-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#f0e9d6;color:#8a7523;vertical-align:1px}
   .np-badge.live{background:var(--signal-soft);color:var(--signal)}
 
-  /* 우측 리서치 패널 */
-  .dback{position:fixed;inset:0;background:rgba(18,19,15,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:60}
-  .dback.on{opacity:1;pointer-events:auto}
+  /* 우측 리서치 패널 (배경 차단 없음 — 열려 있어도 기본 페이지 조작 가능) */
   .drawer{position:fixed;top:0;right:0;height:100%;width:min(540px,94vw);background:var(--paper);border-left:2px solid var(--ink);z-index:61;transform:translateX(103%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(18,19,15,.15)}
   .drawer.on{transform:none}
+  .d-grip{position:absolute;left:-2px;top:0;bottom:0;width:10px;cursor:ew-resize;touch-action:none;z-index:2}
+  .d-grip:hover,.d-grip.drag{background:linear-gradient(to right,var(--signal) 0,var(--signal) 3px,transparent 3px)}
   .d-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:2px solid var(--ink);flex-shrink:0}
   .d-title{font-weight:800;font-size:18px}
   .d-close{background:none;border:1px solid var(--line);border-radius:8px;font-size:14px;cursor:pointer;padding:4px 11px;color:var(--dim)}
@@ -172,8 +172,8 @@
   <div class="foot">도매시세(KAMIS)는 공급가 협상 기준선입니다 — 실제 위탁 공급가는 공급처 컨택으로 확정하세요. 네이버 스마트스토어 수수료 약 6%(결제 3.63%+쇼핑연동 2%, 보수 반올림) 기준.</div>
 </div>
 
-<div id="dback" class="dback"></div>
 <aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="d-grip" id="dGrip" title="드래그해서 너비 조절"></div>
   <div class="d-head">
     <div class="d-title" id="dTitle"></div>
     <button class="d-close" id="dClose">✕ 닫기</button>
@@ -427,18 +427,41 @@ function openDrawer(name){
     const b64=btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
     location.href=`board.html?add=${encodeURIComponent(name)}&type=${encodeURIComponent(it.type)}&meta=${encodeURIComponent(b64)}`;
   });
-  $('#drawer').classList.add('on'); $('#dback').classList.add('on');
+  $('#drawer').classList.add('on');
   recalc();
   loadNaverPrices(name, body, it);
 }
 function closeDrawer(){
   drawerItem=null;
-  $('#drawer').classList.remove('on'); $('#dback').classList.remove('on');
+  $('#drawer').classList.remove('on');
   renderAll(); // 패널에서 입력한 판매가·공급가를 테이블에 반영
 }
 $('#dClose').addEventListener('click',closeDrawer);
-$('#dback').addEventListener('click',closeDrawer);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&drawerItem) closeDrawer(); });
+
+// 패널 너비 조절: 왼쪽 가장자리 드래그 (localStorage에 기억)
+(function(){
+  const drawer=$('#drawer'), grip=$('#dGrip');
+  const saved=parseInt(localStorage.getItem('wetak-drawer-w'),10);
+  if(saved) drawer.style.width=Math.min(Math.max(saved,340), Math.round(window.innerWidth*0.94))+'px';
+  let dragging=false;
+  grip.addEventListener('pointerdown',e=>{
+    dragging=true; grip.classList.add('drag'); grip.setPointerCapture(e.pointerId);
+    drawer.style.transition='none'; e.preventDefault();
+  });
+  grip.addEventListener('pointermove',e=>{
+    if(!dragging) return;
+    const w=Math.min(Math.max(window.innerWidth-e.clientX, 340), Math.round(window.innerWidth*0.94));
+    drawer.style.width=w+'px';
+  });
+  const end=()=>{
+    if(!dragging) return;
+    dragging=false; grip.classList.remove('drag'); drawer.style.transition='';
+    localStorage.setItem('wetak-drawer-w', parseInt(drawer.style.width)||540);
+  };
+  grip.addEventListener('pointerup',end);
+  grip.addEventListener('pointercancel',end);
+})();
 document.addEventListener('click', e=>{
   if(e.target.closest('a')) return;
   const row=e.target.closest('.row.clickable');
