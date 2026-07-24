@@ -59,6 +59,8 @@
   .lnk:hover{background:var(--signal);color:#fff}
   .contact-chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);cursor:pointer;white-space:nowrap}
   .contact-chk input{accent-color:var(--signal)}
+  .sort-sel{font-family:inherit;font-size:11px;font-weight:700;color:var(--dim);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:4px 6px;cursor:pointer}
+  .grp-tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;background:var(--signal-soft);color:var(--signal);vertical-align:1px;margin-left:5px}
 
   .mock-tag{font-size:11px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
   .mock-tag.live{color:var(--signal);border-color:var(--signal)}
@@ -139,7 +141,12 @@
       <div class="card">
         <div class="card-h">
           <div><span class="t">GAP 인증 생산자</span> <span class="badge" id="gapBadge"></span></div>
-          <span class="sub">gap.go.kr 인증농가 조회 (최신 인증순)</span>
+          <span class="sub" id="gapSub">gap.go.kr 인증농가 + 상세(생산량·면적)</span>
+          <select id="gapSort" class="sort-sel" title="정렬">
+            <option value="ton">생산계획량순</option>
+            <option value="new">최신 인증순</option>
+            <option value="region">지역명순</option>
+          </select>
         </div>
         <div id="gapBody"></div>
       </div>
@@ -253,6 +260,43 @@ async function search(item, force=false){
   }
 }
 
+// ---- GAP 렌더 (E38: 생산계획량·면적·농가수 표시 + 정렬 옵션. 정렬 변경은 재조회 없이 캐시 데이터만 재정렬) ----
+let lastGap=null;
+function gapSortVal(){ return localStorage.getItem('wetak-gap-sort')||'ton'; }
+function sortGapItems(items){
+  const s=[...items], k=gapSortVal();
+  if(k==='new') s.sort((a,b)=>String(b.cert_no).localeCompare(String(a.cert_no))); // 인증번호 = 발급 순번
+  else if(k==='region') s.sort((a,b)=>String(a.region).localeCompare(String(b.region),'ko'));
+  else s.sort((a,b)=>((a.plan_ton==null)-(b.plan_ton==null))||((b.plan_ton||0)-(a.plan_ton||0)));
+  return s;
+}
+function renderGap(gap){
+  $('#gapBadge').textContent=gap.mode==='live'?'실데이터':(gap.mode==='unsupported'?'미지원 품목':'목업');
+  $('#gapBadge').className='badge '+(gap.mode==='live'?'good':'mock');
+  $('#gapSub').textContent=gap.total?`gap.go.kr 인증 ${fmt(gap.total)}건 중 상위 ${gap.items.length}건`:'gap.go.kr 인증농가 + 상세(생산량·면적)';
+  $('#gapSort').value=gapSortVal();
+  $('#gapBody').innerHTML=gap.items.length?sortGapItems(gap.items).map(g=>{
+    const meta=[g.region];
+    if(g.plan_ton!=null) meta.push('연 '+fmt(Math.round(g.plan_ton))+'톤');
+    if(g.farmers) meta.push(fmt(g.farmers)+'농가');
+    if(g.area_m2) meta.push(fmt(Math.round(g.area_m2/10000*10)/10)+'ha');
+    const vm=(g.valid||'').match(/~\s*([\d-]+)/);
+    if(vm) meta.push('유효 ~'+vm[1]);
+    return `
+    <div class="s-item">
+      <div class="s-body">
+        <div class="s-name">${g.group}${g.is_group?'<span class="grp-tag">단체</span>':''}</div>
+        <div class="s-meta">${meta.join(' · ')} · 대표 ${g.rep} · 인증 ${g.cert_no}</div>
+      </div>
+      <a class="lnk" href="${searchLink(g.group+' '+g.region)}" target="_blank" rel="noopener">검색↗</a>
+      ${contactChk(g.group)}
+    </div>`;}).join(''):'<div class="empty">'+(gap.mode==='unsupported'?'이 품목은 제철 캘린더 품목만 지원됩니다':'데이터 없음')+'</div>';
+}
+$('#gapSort').addEventListener('change',e=>{
+  localStorage.setItem('wetak-gap-sort',e.target.value);
+  if(lastGap) renderGap(lastGap); // 캐시 재정렬만 — API 재호출 없음
+});
+
 function render(d){
   // 우체국쇼핑
   if(!d.epost.items.length){
@@ -269,18 +313,9 @@ function render(d){
         ${contactChk(it.name)}
       </div>`).join('');
   }
-  // GAP
-  $('#gapBadge').textContent=d.gap.mode==='live'?'실데이터':(d.gap.mode==='unsupported'?'미지원 품목':'목업');
-  $('#gapBadge').className='badge '+(d.gap.mode==='live'?'good':'mock');
-  $('#gapBody').innerHTML=d.gap.items.length?d.gap.items.map(g=>`
-    <div class="s-item">
-      <div class="s-body">
-        <div class="s-name">${g.group}</div>
-        <div class="s-meta">${g.region} · 대표 ${g.rep} · 인증 ${g.cert_no}</div>
-      </div>
-      <a class="lnk" href="${searchLink(g.group+' '+g.region)}" target="_blank" rel="noopener">검색↗</a>
-      ${contactChk(g.group)}
-    </div>`).join(''):'<div class="empty">'+(d.gap.mode==='unsupported'?'이 품목은 제철 캘린더 품목만 지원됩니다':'데이터 없음')+'</div>';
+  // GAP (E38: 상세 필드 + 정렬)
+  lastGap=d.gap;
+  renderGap(d.gap);
   // 지역법인
   const lm=d.local.mode;
   $('#localBadge').textContent=lm==='live'?'실데이터':(lm==='no-scope'?'검색 API 권한 필요':'목업');
